@@ -1,0 +1,19 @@
+{
+    "41573": {
+        "job_id": "41573",
+        "job_full_path": "/sps3/jeremy/LULI/_NEW_PLASMA_/new_plasma_dissip_ne0.03_dx16",
+        "job_full_name": "new_plasma_dissip_ne0.03_dx16.sh",
+        "NODES": "5",
+        "progress": 0.9615384615384616,
+        "ETA": "1h12"
+    },
+    "41574": {
+        "job_id": "41574",
+        "job_full_path": "/sps3/jeremy/LULI/_NEW_PLASMA_/new_plasma_LG_optic_ne0.01_dx16",
+        "job_full_name": "new_plasma_LG_optic_ne0.01_dx16.sh",
+        "NODES": "5",
+        "progress": 0.9504862953138815,
+        "ETA": "1h29"
+    },
+    "datetime": "28/09 - 13h37"
+}
