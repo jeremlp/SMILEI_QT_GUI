@@ -13,6 +13,9 @@ import happi
 
 from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtGui import QFont
+from PyQt5.QtCore import QObject, QThread, pyqtSignal
+from PyQt5.QtCore import QThreadPool
+
 import qdarktheme
 
 import numpy as np
@@ -36,6 +39,148 @@ import json
 from pathlib import Path
 from functools import partial
 
+class ThreadDownloadSimJSON(QtCore.QThread):
+    def __init__(self, file_path, local_folder, parent=None):
+        super(QtCore.QThread, self).__init__()
+        self.file_path = file_path
+        self.local_folder = local_folder
+    finished = pyqtSignal()
+    progress = pyqtSignal(int)
+    def downloadSimJSON(self, file_path, local_folder):
+        host = "llrlsi-gw.in2p3.fr"
+        user = "jeremy"
+        with open('tornado_pwdfile.txt', 'r') as f: password = f.read()
+        remote_path = r"\sps3\jeremy\LULI\simulation_info.json"
+        ssh_key_filepath = r"C:\Users\jerem\.ssh\id_rsa.pub"
+        self.remote_client = RemoteClient(host,user,password,ssh_key_filepath,remote_path)
+        self.remote_client.execute_commands(["python3 /sps3/jeremy/LULI/check_sim_state_py.py"])
+        self.remote_client.download_file(file_path, local_folder)
+        return
+    def run(self):
+        """Long-running task."""
+        self.downloadSimJSON(self.file_path, self.local_folder)
+        self.finished.emit()
+
+class ThreadDownloadSimData(QtCore.QThread):
+    def __init__(self, job_full_path, parent=None):
+        super(QtCore.QThread, self).__init__()
+        self.job_full_path = job_full_path
+    finished = pyqtSignal()
+    progress = pyqtSignal(int)
+    def downloadSimData(self, job_full_path):
+        print("-----------------------------")
+        general_folder_name = job_full_path[18:]
+        local_folder = os.environ["SMILEI_CLUSTER"]
+        local_cluster_folder = f"{local_folder}\\{general_folder_name}"
+        Path(local_cluster_folder).mkdir(parents=True, exist_ok=True)
+        print(f"Downloading in {local_cluster_folder}")
+        host = "llrlsi-gw.in2p3.fr"
+        user = "jeremy"
+        with open('tornado_pwdfile.txt', 'r') as f: password = f.read()
+        remote_path = "/sps3/jeremy/LULI/"
+        ssh_key_filepath = r"C:\Users\jerem\.ssh\id_rsa.pub"
+        remote_client = RemoteClient(host,user,password,ssh_key_filepath,remote_path)
+        _, list_of_files_raw, _ = remote_client.connection.exec_command(f"ls {job_full_path}")
+
+        list_of_files = [job_full_path+"/"+s.rstrip() for s in list_of_files_raw]
+        print("-----------------------------")
+        print("\n".join(list_of_files)[18:])
+        print("-----------------------------")
+        remote_client.bulk_download(list_of_files, local_cluster_folder)
+        return
+    def run(self):
+        """Long-running task."""
+        self.downloadSimData(self.job_full_path)
+        self.finished.emit()
+
+class ThreadGetFieldsProbeData(QtCore.QThread):
+    def __init__(self,  boolList, fields_names, S, fields_t_range, fields_paxisX, fields_paxisY, fields_paxisZ, parent=None):
+        super(QtCore.QThread, self).__init__()
+
+        (self.boolList, self.fields_names, self.S, self.fields_t_range,
+         self.fields_paxisX, self.fields_paxisY, self.fields_paxisZ) = (boolList, fields_names, S, fields_t_range,
+                                                                        fields_paxisX, fields_paxisY, fields_paxisZ)
+    finished = pyqtSignal(list)
+
+    def getFieldsProbeData(self, boolList, fields_names, S, fields_t_range, fields_paxisX, fields_paxisY, fields_paxisZ):
+        fields_data_list = []
+        for i in range(len(fields_names)):
+            if boolList[i]:
+                # print(fields_name)
+                if fields_names[i]=="Er":
+                    T,X,Y,Z = np.meshgrid(fields_t_range, fields_paxisX,fields_paxisY,fields_paxisZ,indexing="ij")
+                    Er = (X*np.array(S.Probe(0,"Ex").getData()).astype(np.float32)
+                              + Y*np.array(S.Probe(0,"Ey").getData()).astype(np.float32))/np.sqrt(X**2+Y**2) #TO VERIFY IF NOT USE A TRANSPOSE
+                    fields_data_list.append(Er)
+                    del T,X,Y,Z,Er
+                elif fields_names[i]=="Eθ":
+                    T,X,Y,Z = np.meshgrid(fields_t_range, fields_paxisX,fields_paxisY,fields_paxisZ,indexing="ij")
+                    Etheta = (X*np.array(S.Probe(0,"Ey").getData()).astype(np.float32)
+                              - Y*np.array(S.Probe(0,"Ex").getData()).astype(np.float32))/np.sqrt(X**2+Y**2) #TO VERIFY IF NOT USE A TRANSPOSE
+                    fields_data_list.append(Etheta)
+                    del T,X,Y,Z,Etheta
+                elif fields_names[i]=="Br":
+                    T,X,Y,Z = np.meshgrid(fields_t_range, fields_paxisX,fields_paxisY,fields_paxisZ,indexing="ij")
+                    Br = (X*np.array(S.Probe(0,"Bx").getData()).astype(np.float32)
+                              + Y*np.array(S.Probe(0,"By").getData()).astype(np.float32))/np.sqrt(X**2+Y**2) #TO VERIFY IF NOT USE A TRANSPOSE
+                    fields_data_list.append(Br)
+                    del T,X,Y,Z,Br
+                elif fields_names[i]=="Bθ":
+                    T,X,Y,Z = np.meshgrid(fields_t_range, fields_paxisX,fields_paxisY,fields_paxisZ,indexing="ij")
+                    Btheta = (X*np.array(S.Probe(0,"By").getData()).astype(np.float32)
+                              - Y*np.array(S.Probe(0,"Bx").getData()).astype(np.float32))/np.sqrt(X**2+Y**2) #TO VERIFY IF NOT USE A TRANSPOSE
+                    fields_data_list.append(Btheta)
+                    del T,X,Y,Z,Btheta
+
+                else: fields_data_list.append(np.array(S.Probe(0,fields_names[i]).getData()).astype(np.float32))
+
+        return fields_data_list
+    def run(self):
+        """Long-running task."""
+        fields_data_list = self.getFieldsProbeData(self.boolList, self.fields_names, self.S, self.fields_t_range, self.fields_paxisX, self.fields_paxisY, self.fields_paxisZ)
+        self.finished.emit(fields_data_list)
+
+class ThreadGetPlasmaProbeData(QtCore.QThread):
+    def __init__(self,  S, boolist, parent=None):
+        super(QtCore.QThread, self).__init__()
+        self.S, self.boolList = S, boolist
+
+    finished = pyqtSignal(list)
+
+    def getPlasmaProbeData(self, S, boolList):
+        plasma_data_list = []
+
+        t0 = time.perf_counter()
+        Naxis = sum(boolList)
+        plasma_names =np.array(["Bz","Bz_trans","ne","ne_trans"])
+        selected_plasma_names = plasma_names[boolList]
+        for i in range(Naxis):
+            if selected_plasma_names[i] == "Bz":
+                Bz_long_diag = S.Probe(1,"Bz")
+                Bz_long = np.array(Bz_long_diag.getData())
+                plasma_data_list.append(Bz_long)
+            if selected_plasma_names[i] == "Bz_trans":
+                Bz_trans_diag = S.Probe(2,"Bz")
+                Bz_trans = np.array(Bz_trans_diag.getData())
+                plasma_data_list.append(Bz_trans)
+            if selected_plasma_names[i] == "ne":
+                Bweight_XY = S.ParticleBinning("weight")
+                Weight_long = np.array(Bweight_XY.getData())
+                plasma_data_list.append(Weight_long)
+            if selected_plasma_names[i] == "ne_trans":
+                Bweight_XY = S.ParticleBinning("weight_trans")
+                Weight_trans = np.array(Bweight_XY.getData())
+                plasma_data_list.append(Weight_trans)
+        t1 = time.perf_counter()
+        print(round(t1-t0,2),"s")
+        return plasma_data_list
+
+    def run(self):
+        plasma_data_list = self.getPlasmaProbeData(self.S, self.boolList)
+        self.finished.emit(plasma_data_list)
+
+
+
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
@@ -47,13 +192,14 @@ class MainWindow(QtWidgets.QMainWindow):
         window_height = int(size.height()/1.5)
         window_width = int(size.width()/1.5)
 
+        self.thread = QThreadPool()
+
+
         groupBox_bg_color_light = "#f0f0f0"
         groupBox_border_color_light = "#FF17365D"
 
         font_color_light = "black"
         font_color_dark = "white"
-
-
 
         self.qss_button = """
         QPushButton {
@@ -71,7 +217,6 @@ class MainWindow(QtWidgets.QMainWindow):
         background-color:#f0f0f0;
         }
         """
-
         self.dark_qss_groupBox = """
         QGroupBox  {
         border: 1px solid gray;
@@ -82,7 +227,6 @@ class MainWindow(QtWidgets.QMainWindow):
         background-color:#101010;
         }
         """
-
         self.light_qss_tab = """
         QTabBar::tab {
         border: 1px solid lightgray;
@@ -95,7 +239,6 @@ class MainWindow(QtWidgets.QMainWindow):
         color: white;
         }
         """
-
         self.light_qss_label = """
         QLabel {
         color : black;
@@ -144,11 +287,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.qss = self.light_qss_groupBox + self.light_qss_tab + self.light_qss_label + self.qss_button + self.qss_progressBar
 
         qdarktheme.setup_theme(self.theme,additional_qss=self.qss)
-
-
         self.setGeometry(175,125,window_width,window_height)
-
-
 
         #==============================
         # FONTS
@@ -166,7 +305,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.int_validator.setLocale(QtCore.QLocale("en_US"))
 
         self.MEMORY = psutil.virtual_memory
-        self.SCRIPT_VERSION ='0.3 "Trnd & Style"'
+        self.SCRIPT_VERSION ='0.4 "Threading"'
         self.COPY_RIGHT = "Jeremy LA PORTE"
         self.spyder_default_stdout = sys.stdout
 
@@ -312,6 +451,7 @@ class MainWindow(QtWidgets.QMainWindow):
         boxLayoutLEFT = QtWidgets.QVBoxLayout()
         boxLayoutLEFT.addWidget(self.settings_groupBox)
         boxLayoutLEFT.addWidget(self.sim_info_groupBox)
+        boxLayoutLEFT.setContentsMargins(2,0,0,0)
 
 
 
@@ -590,7 +730,7 @@ class MainWindow(QtWidgets.QMainWindow):
         tornado_group_box_layout = QtWidgets.QHBoxLayout()
 
 
-        self.tornado_last_update_LABEL = QtWidgets.QLabel("Last updated: LOADING...")
+        self.tornado_last_update_LABEL = QtWidgets.QLabel("LOADING...")
         self.tornado_last_update_LABEL.setFont(QFont('Arial', 12))
         tornado_group_box_layout.addWidget(self.tornado_last_update_LABEL)
         self.tornado_groupBox.setLayout(tornado_group_box_layout)
@@ -604,8 +744,6 @@ class MainWindow(QtWidgets.QMainWindow):
         # self.layoutTornado.addLayout(layoutProgressBar)
         # self.layoutTornado.addLayout(layoutProgressBar)
         self.tornado_Widget.setLayout(self.layoutTornado)
-
-
 
 
         #--------------------
@@ -712,6 +850,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.actionOpenIPython.triggered.connect(self.onOpenIPython)
 
 
+        self.memory_update_TIMER = QtCore.QTimer()
+        self.memory_update_TIMER.setInterval(5000) #in ms
+        self.memory_update_TIMER.timeout.connect(self.updateInfoLabelMem)
+        self.memory_update_TIMER.start()
+
+
 
         # self.reset.clicked.connect(self.onReset)
         # self.interpolation.currentIndexChanged.connect(self.plot)
@@ -732,6 +876,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.INIT_tabFields = None
         self.INIT_tabTrack = None
         self.INIT_tabPlasma = None
+        self.INIT_tabTornado = True
+
         self.loop_in_process = False
         self.is_sim_loaded = False
         self.logs_history_STR = None
@@ -793,7 +939,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
     def updateInfoLabelMem(self):
-        self.general_info_LABEL = QtWidgets.QLabel(f"Version: {self.SCRIPT_VERSION}  |  Memory: {self.MEMORY().used*100/self.MEMORY().total:.0f}% | {self.COPY_RIGHT}")
+        # print(f"update mem: {self.MEMORY().used*100/self.MEMORY().total:.0f}%")
+
+        mem_prc = self.MEMORY().used*100/self.MEMORY().total
+        if mem_prc > 85:
+            self.general_info_LABEL.setText(f"Version: {self.SCRIPT_VERSION} | <font color='red'>Memory: {mem_prc:.0f}%</font> | {self.COPY_RIGHT}")
+        else:
+            self.general_info_LABEL.setText(f"Version: {self.SCRIPT_VERSION} | Memory: {mem_prc:.0f}% | {self.COPY_RIGHT}")
 
     def onOpenSim(self):
         sim_file_DIALOG= QtWidgets.QFileDialog()
@@ -856,25 +1008,18 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.actionDiagTrack.isChecked(): self.onUpdateTabTrack(0)
         if self.actionDiagPlasma.isChecked(): self.onUpdateTabPlasma(0)
 
-        #
-        # self.onUpdateTabFields(0)
-
-
-
-
-
-    def displayLoadingLabel(self):
-        self.loading_LABEL = QtWidgets.QLabel("LOADING...",self)
+    def displayLoadingLabel(self, widget_to_cover):
+        self.loading_LABEL = QtWidgets.QLabel("LOADING...",widget_to_cover)
         self.loading_LABEL.setScaledContents(True)
-        self.loading_LABEL.setStyleSheet("background-color:rgba(0, 0, 0, 50)")
+        self.loading_LABEL.setStyleSheet("background-color:rgba(0, 0, 0, 50); border-radius: 15px;")
         self.loading_LABEL.setAlignment(QtCore.Qt.AlignCenter)
 
         self.loading_LABEL.setFont(self.bold_FONT)
-        widget_pos = self.programm_TABS.mapToGlobal(QtCore.QPoint(0, 0))
+        # widget_pos = self.fields_groupBox.mapToGlobal(QtCore.QPoint(0, 0))
         # print(widget_pos)
-        tab_size = self.programm_TABS.frameGeometry().width(),self.programm_TABS.frameGeometry().height()
-        self.loading_LABEL.resize(tab_size[0]-5,tab_size[1]-30)
-        self.loading_LABEL.move(QtCore.QPoint(237,55))
+        tab_size = widget_to_cover.frameGeometry().width(),widget_to_cover.frameGeometry().height()
+        self.loading_LABEL.resize(tab_size[0],tab_size[1]-45)
+        self.loading_LABEL.move(QtCore.QPoint(0,45))
         self.loading_LABEL.raise_()
         self.loading_LABEL.show()
         app.processEvents()
@@ -888,15 +1033,12 @@ class MainWindow(QtWidgets.QMainWindow):
           if tab_name=="TRACK":
               self.actionDiagTrack.setChecked(False)
               self.onRemoveTrack()
-          self.updateInfoLabelMem()
           if tab_name=="PLASMA":
               self.actionDiagPlasma.setChecked(False)
               self.onRemovePlasma()
           if tab_name=="TORNADO":
               self.actionTornado.setChecked(False)
               self.onRemoveTornado()
-
-          self.updateInfoLabelMem()
 
     def onMenuTabs(self, tab_name):
         self.tab2 = self.track_Widget
@@ -948,16 +1090,80 @@ class MainWindow(QtWidgets.QMainWindow):
             else:
                 self.programm_TABS.addTab(self.tornado_Widget,"TORNADO")
                 app.processEvents()
-                self.onUpdateTabTornado(0)
+                self.onInitTabTornado()
+                # self.loadthread = ThreadDownloadSimJSON("/sps3/jeremy/LULI/simulation_info.json", os.environ["SMILEI_QT"])
+                # self.loadthread.finished.connect(self.onInitTabTornado)
+                # self.loadthread.start()
+                # self.onInitTabTornado()
 
         self.updateInfoLabelMem()
+
+
+
+    def onUpdateTabFieldsFigure(self, fields_data_list):
+
+        #=====================================
+        # REMOVE ALL FIGURES --> NOT OPTIMAL
+        #=====================================
+        if len(self.figure_1.axes) !=0:
+            for ax in self.figure_1.axes: ax.remove()
+
+        self.fields_data_list = fields_data_list
+        self.fields_image_list = []
+
+        check_list = [self.Ex_CHECK,self.Ey_CHECK,self.Ez_CHECK,self.Bx_CHECK,self.By_CHECK,self.Bz_CHECK,
+                      self.Er_CHECK,self.Etheta_CHECK,self.Br_CHECK,self.Btheta_CHECK]
+        boolList = [check.isChecked() for check in check_list]
+        combo_box_index = self.sim_cut_direction_BOX.currentIndex()
+
+        Naxis = min(sum(boolList),3)
+
+        if Naxis != len(self.fields_data_list):
+            # self.loading_LABEL.deleteLater()
+            return
+
+        time_idx = self.fields_time_SLIDER.sliderPosition()
+        z_idx = self.fields_zcut_SLIDER.sliderPosition()
+
+        t1 = time.perf_counter()
+        k=0
+        print("--------------")
+        for i in range(len(self.fields_names)):
+            if boolList[i]:
+                if combo_box_index==0:
+                    print(len(self.fields_data_list))
+                    ax = self.figure_1.add_subplot(Naxis,1,k+1)
+                    im = ax.imshow(self.fields_data_list[k][time_idx,:,self.fields_trans_mid_idx,:],cmap="RdBu", aspect="auto",extent=self.extentZX,origin='lower')
+                    ax.set_title(self.fields_names[i],rotation='vertical',x=-0.1,y=0.48)
+                else:
+                    ax = self.figure_1.add_subplot(1,Naxis,k+1)
+                    im = ax.imshow(fields_data_list[k][time_idx,:,:,z_idx],cmap="RdBu", aspect="auto",extent=self.extentXY,origin='lower')
+                    ax.set_title(self.fields_names[i])
+                im.autoscale()
+                self.figure_1.colorbar(im, ax=ax,pad=0.01)
+                self.fields_image_list.append(im)
+                k+=1
+        t2 = time.perf_counter()
+        print("plot field",(t2-t1)*1000,"ms")
+
+        byte_size_track = getsizeof(self.fields_data_list)+getsizeof(self.fields_image_list)
+        print("Memory from FIELDS:",round(byte_size_track*10**-6,1),"MB (",round(byte_size_track*100/psutil.virtual_memory().total,1),"%)")
+        if combo_box_index==0:
+            self.figure_1.suptitle(f"t={self.fields_t_range[time_idx]/self.l0:.2f}$~t_0$")
+        else:
+            self.figure_1.suptitle(f"$t={self.fields_t_range[time_idx]/self.l0:.2f}~t_0$ ; $z={self.fields_paxisZ[z_idx]/self.l0:.2f}~\lambda$")
+        self.figure_1.tight_layout()
+        self.figure_1.tight_layout()
+        self.canvas_1.draw()
+
+        # self.loading_LABEL.deleteLater()
 
 
     def onUpdateTabFields(self,check_id):
         if self.INIT_tabFields == None or self.is_sim_loaded == False: return
         if self.INIT_tabFields:
             print("===== INIT FIELDS TAB =====")
-            self.displayLoadingLabel()
+            # self.displayLoadingLabel(self.fields_groupBox)
             Ex_diag = self.S.Probe(0,"Ex")
             # fields_shape = np.array(self.S.Probe(0,"Ex").getData()).astype(np.float32).shape
 
@@ -975,6 +1181,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
             self.fields_image_list = []
             self.fields_data_list = []
+            self.fields_names =["Ex","Ey","Ez","Bx","By","Bz","Er","Eθ","Br","Bθ"]
+
 
             self.fields_time_SLIDER.setValue(len(self.fields_t_range))
             self.fields_previous_zcut_SLIDER_value = self.fields_zcut_SLIDER.sliderPosition()
@@ -982,14 +1190,14 @@ class MainWindow(QtWidgets.QMainWindow):
             byte_size_track = getsizeof(self.fields_paxisX)+getsizeof(self.fields_paxisY)+getsizeof(self.fields_paxisZ)+getsizeof(Ex_diag)
             print("Memory from FIELDS:",round(byte_size_track*10**-6,1),"MB (",round(byte_size_track*100/self.MEMORY().total,1),"%)")
 
-            self.loading_LABEL.deleteLater()
+            # self.loading_LABEL.deleteLater()
             self.INIT_tabFields = False
             app.processEvents()
             self.updateInfoLabelMem()
 
         l0 = 2*pi
         if check_id < 10: #CHECK_BOX UPDATE
-            self.displayLoadingLabel()
+            # self.displayLoadingLabel(self.fields_groupBox)
             # print("BOX UPDATE < 10")
 
             check_list = [self.Ex_CHECK,self.Ey_CHECK,self.Ez_CHECK,self.Bx_CHECK,self.By_CHECK,self.Bz_CHECK,
@@ -999,78 +1207,20 @@ class MainWindow(QtWidgets.QMainWindow):
             if sum(boolList)>3:
                 check_list[check_id].setChecked(False)
                 boolList[check_id] = False
-                self.loading_LABEL.deleteLater()
+                # self.loading_LABEL.deleteLater()
                 return
 
-            Naxis = min(sum(boolList),3)
-
-            fields_names =["Ex","Ey","Ez","Bx","By","Bz","Er","Eθ","Br","Bθ"]
-            if len(self.figure_1.axes) !=0:
-                for ax in self.figure_1.axes: ax.remove()
 
             combo_box_index = self.sim_cut_direction_BOX.currentIndex()
 
-            k = 0
             self.fields_image_list = []
             self.fields_data_list = []
             # print(len(self.fields_image_list))
-            for i in range(len(fields_names)):
-                if boolList[i]:
-                    # print(fields_name)
-                    if fields_names[i]=="Er":
-                        T,X,Y,Z = np.meshgrid(self.fields_t_range, self.fields_paxisX,self.fields_paxisY,self.fields_paxisZ,indexing="ij")
-                        Er = (X*np.array(self.S.Probe(0,"Ex").getData()).astype(np.float32)
-                                  + Y*np.array(self.S.Probe(0,"Ey").getData()).astype(np.float32))/np.sqrt(X**2+Y**2) #TO VERIFY IF NOT USE A TRANSPOSE
-                        self.fields_data_list.append(Er)
-                        del T,X,Y,Z,Er
-                    elif fields_names[i]=="Eθ":
-                        T,X,Y,Z = np.meshgrid(self.fields_t_range, self.fields_paxisX,self.fields_paxisY,self.fields_paxisZ,indexing="ij")
-                        Etheta = (X*np.array(self.S.Probe(0,"Ey").getData()).astype(np.float32)
-                                  - Y*np.array(self.S.Probe(0,"Ex").getData()).astype(np.float32))/np.sqrt(X**2+Y**2) #TO VERIFY IF NOT USE A TRANSPOSE
-                        self.fields_data_list.append(Etheta)
-                        del T,X,Y,Z,Etheta
-                    elif fields_names[i]=="Br":
-                        T,X,Y,Z = np.meshgrid(self.fields_t_range, self.fields_paxisX,self.fields_paxisY,self.fields_paxisZ,indexing="ij")
-                        Br = (X*np.array(self.S.Probe(0,"Bx").getData()).astype(np.float32)
-                                  + Y*np.array(self.S.Probe(0,"By").getData()).astype(np.float32))/np.sqrt(X**2+Y**2) #TO VERIFY IF NOT USE A TRANSPOSE
-                        self.fields_data_list.append(Br)
-                        del T,X,Y,Z,Br
-                    elif fields_names[i]=="Bθ":
-                        T,X,Y,Z = np.meshgrid(self.fields_t_range, self.fields_paxisX,self.fields_paxisY,self.fields_paxisZ,indexing="ij")
-                        Btheta = (X*np.array(self.S.Probe(0,"By").getData()).astype(np.float32)
-                                  - Y*np.array(self.S.Probe(0,"Bx").getData()).astype(np.float32))/np.sqrt(X**2+Y**2) #TO VERIFY IF NOT USE A TRANSPOSE
-                        self.fields_data_list.append(Btheta)
-                        del T,X,Y,Z,Btheta
 
-                    else: self.fields_data_list.append(np.array(self.S.Probe(0,fields_names[i]).getData()).astype(np.float32))
+            self.loadthread = ThreadGetFieldsProbeData(boolList, self.fields_names, self.S, self.fields_t_range, self.fields_paxisX, self.fields_paxisY, self.fields_paxisZ)
+            self.loadthread.finished.connect(self.onUpdateTabFieldsFigure)
+            self.loadthread.start()
 
-                    if combo_box_index==0:
-                        ax = self.figure_1.add_subplot(Naxis,1,k+1)
-                        im = ax.imshow(self.fields_data_list[-1][-1,:,self.fields_trans_mid_idx,:],cmap="RdBu", aspect="auto",extent=self.extentZX,origin='lower')
-                        ax.set_title(fields_names[i],rotation='vertical',x=-0.1,y=0.48)
-                    else:
-                        ax = self.figure_1.add_subplot(1,Naxis,k+1)
-                        im = ax.imshow(self.fields_data_list[-1][-1,:,:,self.fields_long_mid_idx],cmap="RdBu", aspect="auto",extent=self.extentXY,origin='lower')
-                        ax.set_title(fields_names[i])
-                    im.autoscale()
-                    self.figure_1.colorbar(im, ax=ax,pad=0.01)
-                    self.fields_image_list.append(im)
-                    k+=1
-
-            byte_size_track = getsizeof(self.fields_data_list)+getsizeof(self.fields_image_list)
-            print("Memory from FIELDS:",round(byte_size_track*10**-6,1),"MB (",round(byte_size_track*100/psutil.virtual_memory().total,1),"%)")
-
-
-            if combo_box_index==0:
-                self.figure_1.suptitle(f"t={self.fields_t_range[-1]/self.l0:.2f}$~t_0$")
-            else:
-                self.figure_1.suptitle(f"$t={self.fields_t_range[-1]/self.l0:.2f}~t_0$ ; $z={self.fields_paxisZ[0]/l0:.2f}~\lambda$")
-            self.figure_1.tight_layout()
-            self.figure_1.tight_layout()
-            print("TIGHT LAYOUT")
-            self.canvas_1.draw()
-
-            self.loading_LABEL.deleteLater()
 
         elif check_id==200 and self.sim_cut_direction_BOX.currentIndex()==0:
             self.fields_zcut_SLIDER.setValue(self.fields_previous_zcut_SLIDER_value) #cannot change z slider if not in Transverse mode
@@ -1111,7 +1261,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     self.figure_1.suptitle(f"$t={self.fields_t_range[time_idx]/self.l0:.2f}~t_0$ ; $z={self.fields_paxisZ[zcut_idx]/l0:.2f}~\lambda$")
             self.canvas_1.draw()
 
-        elif check_id == 1000 :
+        elif check_id == 1000:
 
             if self.loop_in_process: return
 
@@ -1147,8 +1297,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.updateInfoLabelMem()
 
     def onRemoveTrack(self):
-        del self.track_N, self.track_t_range,self.track_traj,self.x,self.y,self.z,self.px,self.py,self.pz,self.r,self.Lz_track
-        gc.collect()
+        if not self.INIT_tabTrack:
+            del self.track_N, self.track_t_range,self.track_traj,self.x,self.y,self.z,self.px,self.py,self.pz,self.r,self.Lz_track
+            gc.collect()
         self.updateInfoLabelMem()
 
     def onRemovePlasma(self):
@@ -1170,9 +1321,18 @@ class MainWindow(QtWidgets.QMainWindow):
             print("===== INIT TRACK TAB =====")
 
             track_name = self.track_file_BOX.currentText()
-            self.displayLoadingLabel()
+            # self.displayLoadingLabel()
             app.processEvents()
-            T0 = self.S.TrackParticles(track_name, axes=["x","y","z","py","pz","px"])
+            try:
+                T0 = self.S.TrackParticles(track_name, axes=["x","y","z","py","pz","px"])
+            except Exception:
+                self.error_msg = QtWidgets.QMessageBox()
+                self.error_msg.setIcon(QtWidgets.QMessageBox.Critical)
+                self.error_msg.setWindowTitle("Error")
+                self.error_msg.setText("No TrackParticles diagnostic found")
+                self.error_msg.exec_()
+                return
+
             self.track_N_tot = T0.nParticles
             self.track_t_range = T0.getTimes()
             self.track_traj = T0.getData()
@@ -1200,9 +1360,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
             print("Memory from TRACK:",round(byte_size_track*10**-6,1),"MB (",round(byte_size_track*100/psutil.virtual_memory().total,1),"%)")
 
-
             self.INIT_tabTrack = False
-            self.loading_LABEL.deleteLater()
+            # self.loading_LABEL.deleteLater()
             app.processEvents()
             self.updateInfoLabelMem()
 
@@ -1276,13 +1435,88 @@ class MainWindow(QtWidgets.QMainWindow):
         print(f"...{(t1-t0):.0f} s")
         return a_range,M
 
+    def onUpdateTabPlasmaFigure(self, plasma_data_list):
+        self.plasma_data_list = plasma_data_list
+        l0=2*pi
+        check_list = [self.plasma_Bz_CHECK,self.plasma_Bz_trans_CHECK,self.plasma_ne_CHECK,self.plasma_ne_trans_CHECK]
+        boolList = [check.isChecked() for check in check_list]
+        Naxis = sum(boolList)
+
+        if Naxis != len(self.plasma_data_list):
+            # self.loading_LABEL.deleteLater()
+            return
+
+        plasma_names =["Bz","Bz_trans","ne","ne_trans"]
+        selected_plasma_names = np.array(plasma_names)[boolList]
+
+        only_trans = sum(["trans" in name for name in selected_plasma_names]) == Naxis
+        only_long = sum(["trans" in name for name in selected_plasma_names]) == 0
+
+        ne = self.S.namelist.ne
+        VMAX_Bz = 0.001*self.toTesla*self.a0*ne/0.01 #1 = 10709T
+
+        #=====================================
+        # REMOVE ALL FIGURES --> NOT OPTIMAL !
+        #=====================================
+        if len(self.figure_3.axes) !=0:
+            for ax in self.figure_3.axes: ax.remove()
+
+        time_idx = self.plasma_time_SLIDER.sliderPosition()
+        z_idx = self.plasma_zcut_SLIDER.sliderPosition()
+        k=0
+        for i in range(len(plasma_names)):
+            if boolList[i]:
+                if only_trans:
+                    ax = self.figure_3.add_subplot(1,Naxis,k+1)
+                elif only_long:
+                    ax = self.figure_3.add_subplot(Naxis,1,k+1)
+                elif Naxis <= 2:
+                    ax = self.figure_3.add_subplot(1,Naxis,k+1)
+                else:
+                    ax = self.figure_3.add_subplot(2,2,i+1)
+
+                if plasma_names[i]=="Bz":
+                    im = ax.imshow(self.plasma_data_list[k][time_idx]*self.toTesla,aspect="auto",cmap="RdYlBu",
+                                    vmin=-VMAX_Bz,vmax=VMAX_Bz,extent=self.extentXZ_long)
+                    ax.set_title(plasma_names[i])
+                if plasma_names[i]=="Bz_trans":
+                    im = ax.imshow(self.plasma_data_list[k][time_idx,:,:,z_idx]*self.toTesla,aspect="equal",cmap="RdYlBu",
+                                    vmin=-VMAX_Bz,vmax=VMAX_Bz,extent=self.extentXY)
+                    ax.set_title(f"{plasma_names[i]} ($z={self.plasma_paxisZ_Bz[z_idx]/l0:.1f}~\lambda$)")
+                if plasma_names[i]=="ne_trans":
+                    im = ax.imshow(self.plasma_data_list[k][time_idx,:,:,z_idx]/ne,aspect="equal",
+                                    origin="lower", cmap = "jet",extent=self.extentXY, vmin=0, vmax=2) #bwr, RdYlBu
+                    ax.set_title(f"{plasma_names[i]} ($z={self.plasma_paxisZ_Weight[z_idx]/l0:.1f}~\lambda$)")
+                if plasma_names[i]=="ne":
+                    im = ax.imshow(self.plasma_data_list[k][time_idx,:,:,0]/ne,aspect="auto",
+                                    origin="lower", cmap = "jet",extent=self.extentXZ_long, vmin=0, vmax=2) #bwr, RdYlBu
+                    ax.set_title(plasma_names[i])
+                self.figure_3.colorbar(im, ax=ax,pad=0.01)
+                self.plasma_image_list.append(im)
+                k+=1
+        self.figure_3.suptitle(f"t={self.plasma_t_range[time_idx]/l0:.2f} t0")
+        for w in range(10):
+            self.figure_3.tight_layout()
+            self.figure_3.tight_layout()
+        self.canvas_3.draw()
+        # self.loading_LABEL.deleteLater()
 
     def onUpdateTabPlasma(self, check_id):
         if self.INIT_tabPlasma == None or self.is_sim_loaded == False: return
         if self.INIT_tabPlasma:
             l0 = 2*pi
+
+            plasma_species_exist = "ion" in [s.name for s in self.S.namelist.Species]
+            if not plasma_species_exist:
+                self.error_msg = QtWidgets.QMessageBox()
+                self.error_msg.setIcon(QtWidgets.QMessageBox.Critical)
+                self.error_msg.setWindowTitle("Error")
+                self.error_msg.setText("No Plasma (Ions) Species found")
+                self.error_msg.exec_()
+                return
+
             print("===== INIT FIELDS PLASMA =====")
-            self.displayLoadingLabel()
+            # self.displayLoadingLabel(self.plasma_groupBox)
 
             Bz_long_diag = self.S.Probe(1,"Bz")
             self.plasma_paxisX_long = Bz_long_diag.getAxis("axis1")[:,0]
@@ -1297,6 +1531,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
             Bweight_XY = self.S.ParticleBinning("weight_trans")
             self.plasma_paxisZ_Weight = Bweight_XY.getAxis("z")
+            self.toTesla = 10709
 
 
             self.extentXZ_long = [self.plasma_paxisZ_long[0]/l0,self.plasma_paxisZ_long[-1]/l0,
@@ -1312,23 +1547,15 @@ class MainWindow(QtWidgets.QMainWindow):
             self.plasma_image_list = []
             self.plasma_data_list = []
 
-
-            # self.plasma_previous_zcut_SLIDER_value = self.plasma_zcut_SLIDER.sliderPosition()
-
-            # byte_size_track = getsizeof(self.fields_paxisX)+getsizeof(self.plasma_paxisY)+getsizeof(self.plasma_paxisZ)+getsizeof(Ex_diag)
-            # print("Memory from PLASMA:",round(byte_size_track*10**-6,1),"MB (",round(byte_size_track*100/self.MEMORY().total,1),"%)")
-
-            self.loading_LABEL.deleteLater()
+            # self.loading_LABEL.deleteLater()
             self.INIT_tabPlasma = False
             app.processEvents()
             self.updateInfoLabelMem()
 
-        toTesla = 10709
+
         ne = self.S.namelist.ne
         l0 = 2*pi
         if check_id < 10: #CHECK_BOX UPDATE
-            # print(check_id, "box update")
-            self.displayLoadingLabel()
 
             check_list = [self.plasma_Bz_CHECK,self.plasma_Bz_trans_CHECK,self.plasma_ne_CHECK,self.plasma_ne_trans_CHECK]
             boolList = [check.isChecked() for check in check_list]
@@ -1336,14 +1563,20 @@ class MainWindow(QtWidgets.QMainWindow):
             if sum(boolList)>4:
                 check_list[check_id].setChecked(False)
                 boolList[check_id] = False
-                self.loading_LABEL.deleteLater()
+                # self.loading_LABEL.deleteLater()
                 return
 
             Naxis = min(sum(boolList),4)
+            VMAX_Bz = 0.001*self.toTesla*self.a0*ne/0.01 #1 = 10709T
 
             plasma_names =["Bz","Bz_trans","ne","ne_trans"]
+
+            #=====================================
+            # REMOVE ALL FIGURES --> NOT OPTIMAL
+            #=====================================
             if len(self.figure_3.axes) !=0:
                 for ax in self.figure_3.axes: ax.remove()
+
             selected_plasma_names = np.array(plasma_names)[boolList]
 
             only_trans = sum(["trans" in name for name in selected_plasma_names]) == Naxis
@@ -1352,57 +1585,10 @@ class MainWindow(QtWidgets.QMainWindow):
             k = 0
             self.plasma_image_list = []
             self.plasma_data_list = []
-            for i in range(len(plasma_names)):
-                if boolList[i]:
-                    if only_trans:
-                        ax = self.figure_3.add_subplot(1,Naxis,k+1)
-                    elif only_long:
-                        ax = self.figure_3.add_subplot(Naxis,1,k+1)
-                    else:
-                        ax = self.figure_3.add_subplot(2,2,i+1)
 
-
-                    VMAX_Bz = 0.001*toTesla*self.a0*ne/0.01 #1 = 10709T
-
-                    if plasma_names[i]=="Bz":
-                        Bz_long_diag = self.S.Probe(1,"Bz")
-                        Bz_long = np.array(Bz_long_diag.getData())
-                        self.plasma_data_list.append(Bz_long)
-                        im = ax.imshow(Bz_long[-1]*toTesla,aspect="auto",cmap="RdYlBu",
-                                        vmin=-VMAX_Bz,vmax=VMAX_Bz,extent=self.extentXZ_long)
-                        ax.set_title(plasma_names[i])
-
-                    if plasma_names[i]=="Bz_trans":
-                        Bz_trans_diag = self.S.Probe(2,"Bz")
-                        Bz_trans = np.array(Bz_trans_diag.getData())
-                        self.plasma_data_list.append(Bz_trans)
-                        im = ax.imshow(Bz_trans[-1,:,:,3]*toTesla,aspect="equal",cmap="RdYlBu",
-                                        vmin=-VMAX_Bz,vmax=VMAX_Bz,extent=self.extentXY)
-                        ax.set_title(f"{plasma_names[i]} ($z={self.plasma_paxisZ_Bz[3]/l0:.1f}~\lambda$)")
-                    if plasma_names[i]=="ne_trans":
-                        Bweight_XY = self.S.ParticleBinning("weight_trans")
-                        Weight_trans = np.array(Bweight_XY.getData())
-                        self.plasma_data_list.append(Weight_trans)
-                        im = ax.imshow(Weight_trans[-1,:,:,3]/ne,aspect="equal",
-                                        origin="lower", cmap = "jet",extent=self.extentXY, vmin=0, vmax=2) #bwr, RdYlBu
-                        ax.set_title(f"{plasma_names[i]} ($z={self.plasma_paxisZ_Weight[3]/l0:.1f}~\lambda$)")
-                    if plasma_names[i]=="ne":
-                        Bweight_XZ = self.S.ParticleBinning("weight")
-                        Weight = np.array(Bweight_XZ.getData())
-                        self.plasma_data_list.append(Weight)
-                        im = ax.imshow(Weight[-1,:,:,0]/ne,aspect="auto",
-                                        origin="lower", cmap = "jet",extent=self.extentXZ_long, vmin=0, vmax=2) #bwr, RdYlBu
-                        ax.set_title(plasma_names[i])
-
-
-                    self.figure_3.colorbar(im, ax=ax,pad=0.01)
-                    self.plasma_image_list.append(im)
-                    k+=1
-            self.figure_3.suptitle(f"t={self.plasma_t_range[-1]/l0:.2f} t0")
-            self.figure_3.tight_layout()
-            self.figure_3.tight_layout()
-            self.canvas_3.draw()
-            self.loading_LABEL.deleteLater()
+            self.loadthread = ThreadGetPlasmaProbeData(self.S, boolList)
+            self.loadthread.finished.connect(self.onUpdateTabPlasmaFigure)
+            self.loadthread.start()
 
 
         elif check_id <= 210: #SLIDER UPDATE
@@ -1424,8 +1610,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 zcut_idx = self.plasma_zcut_SLIDER.sliderPosition()
                 self.plasma_zcut_EDIT.setText(str(round(self.plasma_paxisZ_Bz[zcut_idx]/l0,2)))
 
-            # self.plasma_previous_zcut_SLIDER_value = self.plasma_zcut_SLIDER.sliderPosition()
-
             self.figure_3.suptitle(f"$t={self.plasma_t_range[time_idx]/l0:.2f}~t_0$")
 
             for i,im in enumerate(self.plasma_image_list):
@@ -1434,14 +1618,12 @@ class MainWindow(QtWidgets.QMainWindow):
                 boolList = [check.isChecked() for check in check_list]
                 plasma_names =["Bz","Bz_trans","ne","ne_trans"]
                 selected_plasma_names = np.array(plasma_names)[boolList]
-                # print(selected_plasma_names)
-                # print(self.plasma_data_list[i].shape)
 
                 if selected_plasma_names[i] == "Bz":
-                    im.set_data(self.plasma_data_list[i][time_idx,:,:]*toTesla)
+                    im.set_data(self.plasma_data_list[i][time_idx,:,:]*self.toTesla)
                     # max_value = np.max(np.abs(self.plasma_data_list[i][time_idx,:,:]))
                 if selected_plasma_names[i] == "Bz_trans":
-                    im.set_data(self.plasma_data_list[i][time_idx,:,:,zcut_idx]*toTesla)
+                    im.set_data(self.plasma_data_list[i][time_idx,:,:,zcut_idx]*self.toTesla)
                     self.figure_3.axes[i*2].set_title(f"{selected_plasma_names[i]} ($z={self.plasma_paxisZ_Bz[zcut_idx]/l0:.1f}~\lambda$)")
                     # max_value = np.max(np.abs(self.plasma_data_list[i][time_idx,:,:,zcut_idx]))
                 if selected_plasma_names[i] == "ne":
@@ -1472,9 +1654,9 @@ class MainWindow(QtWidgets.QMainWindow):
                     selected_plasma_names = np.array(plasma_names)[boolList]
 
                     if selected_plasma_names[i] == "Bz":
-                        im.set_data(self.plasma_data_list[i][time_idx,:,:]*toTesla)
+                        im.set_data(self.plasma_data_list[i][time_idx,:,:]*self.toTesla)
                     if selected_plasma_names[i] == "Bz_trans":
-                        im.set_data(self.plasma_data_list[i][time_idx,:,:,zcut_idx]*toTesla)
+                        im.set_data(self.plasma_data_list[i][time_idx,:,:,zcut_idx]*self.toTesla)
                         self.figure_3.axes[i*2].set_title(f"{selected_plasma_names[i]} ($z={self.plasma_paxisZ_Bz[zcut_idx]/l0:.1f}~\lambda$)")
                     if selected_plasma_names[i] == "ne":
                         im.set_data(self.plasma_data_list[i][time_idx,:,:,0]/ne)
@@ -1490,17 +1672,27 @@ class MainWindow(QtWidgets.QMainWindow):
             self.loop_in_process = False
 
 
-    def async_checkTornado(self, download_trnd_json = True):
+    def onCloseProgressBar(self, sim_id_int):
+
+        self.finished_sim_hist.remove(sim_id_int)
+        layout_to_del = self.layout_progress_bar_dict[str(sim_id_int)]
+        print("to del:",layout_to_del)
+        for i in range(self.layoutTornado.count()):
+            layout_progressBar = self.layoutTornado.itemAt(i)
+            print(i,layout_progressBar)
+            if layout_progressBar == layout_to_del:
+                print("delete:",layout_progressBar)
+                self.deleteLayout(self.layoutTornado, i)
+
+
+    def async_onUpdateTabTornado(self, download_trnd_json = True):
         print("async check")
         """
         asynchronous function called PERIODICALLY
         """
-        if download_trnd_json: self.downloadSimJSON("/sps3/jeremy/LULI/simulation_info.json", os.environ["SMILEI_QT"])
-
         sim_json_name = "simulation_info.json"
         with open(sim_json_name) as f:
             self.sim_dict = json.load(f)
-
 
         OLD_NB_SIM_RUNNING = len(self.running_sim_hist)
         CURRENT_NB_SIM_RUNNING = len(self.sim_dict) - 1 #-1 for datetime
@@ -1517,14 +1709,25 @@ class MainWindow(QtWidgets.QMainWindow):
                     self.finished_sim_hist.append(old_sim_id_int)
                     self.running_sim_hist.remove(old_sim_id_int)
 
-                    progress_bar = self.layout_progress_bar_dict[str(old_sim_id_int)].itemAt(2).widget()
-                    ETA_LABEL = self.layout_progress_bar_dict[str(old_sim_id_int)].itemAt(3).widget()
-                    dl_sim_BUTTON = self.layout_progress_bar_dict[str(old_sim_id_int)].itemAt(4).widget()
+                    layout = self.layout_progress_bar_dict[str(old_sim_id_int)]
+                    progress_bar = layout.itemAt(2).widget()
+                    ETA_LABEL = layout.itemAt(3).widget()
+                    dl_sim_BUTTON = layout.itemAt(4).widget()
+
                     progress_bar.setStyleSheet(self.qss_progressBar_COMPLETED)
                     progress_bar.setValue(100)
                     ETA_LABEL.setStyleSheet("background-color: lightpink")
                     ETA_LABEL.setText(" - ")
                     dl_sim_BUTTON.setStyleSheet("border-color: red")
+
+                    close_BUTTON = QtWidgets.QPushButton()
+                    close_BUTTON = QtWidgets.QPushButton()
+                    close_BUTTON.setFixedSize(25,25)
+                    close_BUTTON.setIcon(QtGui.QIcon(os.environ["SMILEI_QT"]+"\\Ressources\\close_button_trans.png"))
+                    close_BUTTON.setIconSize(QtCore.QSize(25, 25))
+                    close_BUTTON.setStyleSheet("border-radius:0px; border:0px")
+                    close_BUTTON.clicked.connect(lambda: self.onCloseProgressBar(old_sim_id_int))
+                    layout.addWidget(close_BUTTON)
 
                     finished_sim_path = self.previous_sim_dict[str(old_sim_id_int)]["job_full_path"]
                     print(finished_sim_path,"is download is available !")
@@ -1542,55 +1745,15 @@ class MainWindow(QtWidgets.QMainWindow):
             sim_name = sim["job_full_name"][:-3]
             sim_nodes = int(sim["NODES"])
 
-
             if (sim_id_int not in self.running_sim_hist) and (sim_id_int not in self.finished_sim_hist):
-                # print(sim_id not in self.running_sim_hist, sim_id not in self.finished_sim_hist)
-                tornado_PROGRESS_BAR = QtWidgets.QProgressBar(maximum=100)
-                tornado_PROGRESS_BAR.setValue(round(sim_progress))
-                tornado_PROGRESS_BAR.setFont(QFont('Arial', 15))
-                tornado_PROGRESS_BAR.setAlignment(QtCore.Qt.AlignCenter)
-                layoutProgressBar = QtWidgets.QHBoxLayout()
 
-                custom_FONT = QtGui.QFont("Courier New", 15,QFont.Bold)
-
-                sim_name_LABEL = QtWidgets.QLabel(sim_name)
-                sim_name_LABEL.setFont(custom_FONT)
-                sim_name_LABEL.setMinimumWidth(450)
-                sim_name_LABEL.setStyleSheet("background-color: lightblue")
-                sim_name_LABEL.setWordWrap(True)
-                sim_name_LABEL.setAlignment(QtCore.Qt.AlignCenter)
-
-                sim_node_LABEL = QtWidgets.QLabel(f"NDS:{sim_nodes}")
-                sim_node_LABEL.setFont(custom_FONT)
-                sim_node_LABEL.setStyleSheet("background-color: lightblue")
-
-                ETA_LABEL = QtWidgets.QLabel(sim_ETA)
-                ETA_LABEL.setFont(custom_FONT)
-                ETA_LABEL.setStyleSheet("background-color: lightblue")
-                # ETA_LABEL.setAlignment(QtCore.Qt.AlignCenter)
-                ETA_LABEL.setMinimumWidth(75)
-
-                dl_sim_BUTTON = QtWidgets.QPushButton()
-                dl_sim_BUTTON.setIcon(QtGui.QIcon(os.environ["SMILEI_QT"]+"\\Ressources\\download_button.png"))
-                dl_sim_BUTTON.setFixedSize(35,35)
-                dl_sim_BUTTON.setIconSize(QtCore.QSize(25, 25))
-
-                print(sim_id)
-                dl_sim_BUTTON.clicked.connect(partial(self.onDownloadSimData, sim_id))
-
-                layoutProgressBar.addWidget(sim_name_LABEL)
-                layoutProgressBar.addWidget(sim_node_LABEL)
-                layoutProgressBar.addWidget(tornado_PROGRESS_BAR)
-                layoutProgressBar.addWidget(ETA_LABEL)
-                layoutProgressBar.addWidget(dl_sim_BUTTON)
-                layoutProgressBar.setContentsMargins(25,20,25,20) #left top right bottom
+                layoutProgressBar = self.createLayoutProgressBar(sim_id, sim_progress, sim_name, sim_nodes, sim_ETA)
                 self.layout_progress_bar_dict[sim_id] = layoutProgressBar
 
                 item_count = self.layoutTornado.count()
 
                 spacer_item = self.layoutTornado.itemAt(item_count-1)
                 self.layoutTornado.removeItem(spacer_item)
-                # spacer_item.deleteLater()
 
                 self.layoutTornado.addLayout(layoutProgressBar)
                 verticalSpacer = QtWidgets.QSpacerItem(1, 1, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
@@ -1601,7 +1764,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 progress_bar = self.layout_progress_bar_dict[sim_id].itemAt(2).widget()
                 progress_bar.setValue(round(sim_progress))
                 ETA_label = self.layout_progress_bar_dict[sim_id].itemAt(3).widget()
-                # print(repr(sim_ETA))
                 ETA_label.setText(sim_ETA)
 
         #Update label with Update datetime
@@ -1612,102 +1774,101 @@ class MainWindow(QtWidgets.QMainWindow):
 
         app.processEvents()
 
+    def call_ThreadDownloadSimJSON(self):
+        self.loadthread = ThreadDownloadSimJSON("/sps3/jeremy/LULI/simulation_info.json", os.environ["SMILEI_QT"])
+        self.loadthread.finished.connect(self.async_onUpdateTabTornado)
+        self.loadthread.start()
 
-    def onUpdateTabTornado(self,id):
+    def onInitTabTornado(self):
+        if self.INIT_tabTornado == None: return
+        if self.INIT_tabTornado:
 
-        self.tornado_update_TIMER = QtCore.QTimer()
+            self.tornado_update_TIMER = QtCore.QTimer()
+            refresh_time_min = 15 #minute
+            self.tornado_update_TIMER.setInterval(int(refresh_time_min*60*1000)) #in ms
+            # self.tornado_update_TIMER.timeout.connect(self.async_onUpdateTabTornado)
+            self.tornado_update_TIMER.timeout.connect(self.call_ThreadDownloadSimJSON)
+            self.tornado_update_TIMER.start()
 
-        refresh_time_min = 30 #minute
-        self.tornado_update_TIMER.setInterval(int(refresh_time_min*60*1000)) #in ms
-        self.tornado_update_TIMER.timeout.connect(self.async_checkTornado)
-        self.tornado_update_TIMER.start()
+            sim_json_name = "simulation_info.json"
+            with open(sim_json_name) as f:
+                self.sim_dict = json.load(f)
+                self.previous_sim_dict = self.sim_dict
 
-        self.downloadSimJSON("/sps3/jeremy/LULI/simulation_info.json", os.environ["SMILEI_QT"])
-        sim_json_name = "simulation_info.json"
-        with open(sim_json_name) as f:
-            self.sim_dict = json.load(f)
-            self.previous_sim_dict = self.sim_dict
+            #=============================
+            # INIT PROGRESS BARS
+            #=============================
+            self.running_sim_hist = []
+            self.finished_sim_hist = []
+            self.layout_progress_bar_dict = {}
 
-        #=============================
-        # INIT PROGRESS BARS
-        #=============================
-        self.running_sim_hist = []
-        self.finished_sim_hist = []
-        self.layout_progress_bar_dict = {}
+            for sim_id in self.sim_dict:
+                if sim_id == "datetime": continue #only open sim data and not metadata (located at the end of dict)
+                sim = self.sim_dict[sim_id]
+                sim_progress = sim["progress"]*100
+                sim_ETA = sim["ETA"].rjust(5)
+                sim_name = sim["job_full_name"][:-3]
+                sim_nodes = int(sim["NODES"])
 
-        for sim_id in self.sim_dict:
-            if sim_id == "datetime": continue #only open sim data and not metadata (located at the end of dict)
-            sim = self.sim_dict[sim_id]
-            sim_progress = sim["progress"]*100
-            sim_ETA = sim["ETA"].rjust(5)
-            sim_name = sim["job_full_name"][:-3]
-            sim_nodes = int(sim["NODES"])
+                self.running_sim_hist.append(int(sim_id))
 
-            tornado_PROGRESS_BAR = QtWidgets.QProgressBar(maximum=100)
-            tornado_PROGRESS_BAR.setValue(round(sim_progress))
-            tornado_PROGRESS_BAR.setFont(QFont('Arial', 15))
-            tornado_PROGRESS_BAR.setAlignment(QtCore.Qt.AlignCenter)
+                layoutProgressBar = self.createLayoutProgressBar(sim_id, sim_progress, sim_name, sim_nodes, sim_ETA)
 
-            SIM_FINISHED_COND = sim_progress >= 100 #TO BE REPLACED WITH COMPARISON WITH PREVIOUS DATA
-
-            self.running_sim_hist.append(int(sim_id))
-
-            # layoutProgressBar = self.creatPara(sim_name, tornado_PROGRESS_BAR)
-            layoutProgressBar = QtWidgets.QHBoxLayout()
-
-            custom_FONT = QtGui.QFont("Courier New", 15,QFont.Bold)
-
-            sim_name_LABEL = QtWidgets.QLabel(sim_name)
-            sim_name_LABEL.setFont(custom_FONT)
-            sim_name_LABEL.setMinimumWidth(450)
-            sim_name_LABEL.setStyleSheet("background-color: lightblue")
-            sim_name_LABEL.setWordWrap(True)
-            sim_name_LABEL.setAlignment(QtCore.Qt.AlignCenter)
-
-            sim_node_LABEL = QtWidgets.QLabel(f"NDS:{sim_nodes}")
-            sim_node_LABEL.setFont(custom_FONT)
-            sim_node_LABEL.setStyleSheet("background-color: lightblue")
-
-            ETA_LABEL = QtWidgets.QLabel(sim_ETA)
-            ETA_LABEL.setFont(custom_FONT)
-            ETA_LABEL.setStyleSheet("background-color: lightblue")
-            # ETA_LABEL.setAlignment(QtCore.Qt.AlignCenter)
-            ETA_LABEL.setMinimumWidth(75)
-
-            dl_sim_BUTTON = QtWidgets.QPushButton()
-            dl_sim_BUTTON.setIcon(QtGui.QIcon(os.environ["SMILEI_QT"]+"\\Ressources\\download_button.png"))
-            dl_sim_BUTTON.setFixedSize(35,35)
-            dl_sim_BUTTON.setIconSize(QtCore.QSize(25, 25))
-
-            print(sim_id)
-            dl_sim_BUTTON.clicked.connect(partial(self.onDownloadSimData, sim_id))
-
-            layoutProgressBar.addWidget(sim_name_LABEL)
-            layoutProgressBar.addWidget(sim_node_LABEL)
-            layoutProgressBar.addWidget(tornado_PROGRESS_BAR)
-            layoutProgressBar.addWidget(ETA_LABEL)
-            layoutProgressBar.addWidget(dl_sim_BUTTON)
-            layoutProgressBar.setContentsMargins(25,20,25,20) #left top right bottom
-
-            self.layout_progress_bar_dict[sim_id] = layoutProgressBar
-            self.layoutTornado.addLayout(layoutProgressBar)
+                self.layout_progress_bar_dict[sim_id] = layoutProgressBar
+                self.layoutTornado.addLayout(layoutProgressBar)
             verticalSpacer = QtWidgets.QSpacerItem(1, 1, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+            self.layoutTornado.addSpacerItem(verticalSpacer)
+            # self.layoutTornado.addStretch(100)
+            sim_datetime = self.sim_dict["datetime"]
 
-        self.layoutTornado.addSpacerItem(verticalSpacer)
-        # self.layoutTornado.addStretch(100)
+            self.tornado_last_update_LABEL.setText(f"Last updated: {sim_datetime}")
+            self.INIT_tabTornado = False
+            app.processEvents()
+
+    def createLayoutProgressBar(self, sim_id, sim_progress, sim_name, sim_nodes, sim_ETA):
+        layoutProgressBar = QtWidgets.QHBoxLayout()
+
+        tornado_PROGRESS_BAR = QtWidgets.QProgressBar(maximum=100)
+        tornado_PROGRESS_BAR.setValue(round(sim_progress))
+        tornado_PROGRESS_BAR.setFont(QFont('Arial', 15))
+        tornado_PROGRESS_BAR.setAlignment(QtCore.Qt.AlignCenter)
+
+        custom_FONT = QtGui.QFont("Courier New", 15,QFont.Bold)
+
+        sim_name_LABEL = QtWidgets.QLabel(sim_name)
+        sim_name_LABEL.setFont(custom_FONT)
+        sim_name_LABEL.setMinimumWidth(450)
+        sim_name_LABEL.setStyleSheet("background-color: lightblue")
+        sim_name_LABEL.setWordWrap(True)
+        sim_name_LABEL.setAlignment(QtCore.Qt.AlignCenter)
+
+        sim_node_LABEL = QtWidgets.QLabel(f"NDS:{sim_nodes}")
+        sim_node_LABEL.setFont(custom_FONT)
+        sim_node_LABEL.setStyleSheet("background-color: lightblue")
+
+        ETA_LABEL = QtWidgets.QLabel(sim_ETA)
+        ETA_LABEL.setFont(custom_FONT)
+        ETA_LABEL.setStyleSheet("background-color: lightblue")
+        # ETA_LABEL.setAlignment(QtCore.Qt.AlignCenter)
+        ETA_LABEL.setMinimumWidth(75)
+
+        dl_sim_BUTTON = QtWidgets.QPushButton()
+        dl_sim_BUTTON.setIcon(QtGui.QIcon(os.environ["SMILEI_QT"]+"\\Ressources\\download_button.png"))
+        dl_sim_BUTTON.setFixedSize(35,35)
+        dl_sim_BUTTON.setIconSize(QtCore.QSize(25, 25))
+
+        dl_sim_BUTTON.clicked.connect(partial(self.onDownloadSimData, sim_id))
 
 
-        sim_datetime = self.sim_dict["datetime"]
 
-        self.tornado_last_update_LABEL.setText(f"Last updated: {sim_datetime}")
-        app.processEvents()
+        layoutProgressBar.addWidget(sim_name_LABEL)
+        layoutProgressBar.addWidget(sim_node_LABEL)
+        layoutProgressBar.addWidget(tornado_PROGRESS_BAR)
+        layoutProgressBar.addWidget(ETA_LABEL)
+        layoutProgressBar.addWidget(dl_sim_BUTTON)
 
-        # self.async_checkTornado()
-        # app.processEvents()
-        # for test_loop in range(10):
-        #     self.async_checkTornado()
-        #     time.sleep(2)
-        #     app.processEvents()
+        layoutProgressBar.setContentsMargins(25,20,25,20) #left top right bottom
+        return layoutProgressBar
 
 
     def creatPara(self,name, widget, adjust_label=False,fontsize=10):
@@ -1723,57 +1884,15 @@ class MainWindow(QtWidgets.QMainWindow):
         layout.addWidget(widget)
         return layout
 
-    def downloadSimJSON(self, file_path, local_folder):
-        host = "llrlsi-gw.in2p3.fr"
-        user = "jeremy"
-        with open('tornado_pwdfile.txt', 'r') as f: password = f.read()
-        remote_path = r"\sps3\jeremy\LULI\simulation_info.json"
-        ssh_key_filepath = r"C:\Users\jerem\.ssh\id_rsa.pub"
-        self.remote_client = RemoteClient(host,user,password,ssh_key_filepath,remote_path)
-        self.remote_client.execute_commands(["python3 /sps3/jeremy/LULI/check_sim_state_py.py"])
-        self.remote_client.download_file(file_path, local_folder)
-        return
-
-    def downloadSimData(self, job_full_path):
-        print("-----------------------------")
-        print(repr(job_full_path))
-        print(repr(job_full_path[18:]))
-        general_folder_name = job_full_path[18:]
-        print(general_folder_name)
-
-        local_folder = os.environ["SMILEI_CLUSTER"]
-
-        local_cluster_folder = f"{local_folder}\\{general_folder_name}"
-        Path(local_cluster_folder).mkdir(parents=True, exist_ok=True)
-        print(f"Downloading in {local_cluster_folder}")
-
-        host = "llrlsi-gw.in2p3.fr"
-        user = "jeremy"
-        with open('tornado_pwdfile.txt', 'r') as f: password = f.read()
-        remote_path = "/sps3/jeremy/LULI/"
-        ssh_key_filepath = r"C:\Users\jerem\.ssh\id_rsa.pub"
-        remote_client = RemoteClient(host,user,password,ssh_key_filepath,remote_path)
-
-        # sim_path = "_NEW_PLASMA_\\new_plasma_LG_optic_ne0.01_dx12"
-        # self.main.downloadSimData("_NEW_PLASMA_/new_plasma_LG_optic_ne0.01_dx12/")
-
-        _, list_of_files_raw, _ = remote_client.connection.exec_command(f"ls {job_full_path}")
-
-        list_of_files = [job_full_path+"/"+s.rstrip() for s in list_of_files_raw]
-        print("-----------------------------")
-        print(list_of_files)
-        print("-----------------------------")
-        remote_client.bulk_download(list_of_files, local_cluster_folder)
-        return
-
     def onDownloadSimData(self, sim_id):
         print("===========================")
         print("downloading request for", sim_id)
 
         job_full_path = self.previous_sim_dict[str(sim_id)]["job_full_path"]
         print(job_full_path)
-
-        self.downloadSimData(job_full_path) #"_NEW_PLASMA_/new_plasma_LG_optic_ne0.01_dx12/")
+        self.loadthread = ThreadDownloadSimData(job_full_path)
+        self.loadthread.start()
+        # self.downloadSimData(job_full_path) #"_NEW_PLASMA_/new_plasma_LG_optic_ne0.01_dx12/")
 
 
 class ProxyStyle(QtWidgets.QProxyStyle):
