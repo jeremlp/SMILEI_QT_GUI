@@ -47,6 +47,7 @@ class ThreadDownloadSimJSON(QtCore.QThread):
     finished = pyqtSignal()
     progress = pyqtSignal(int)
     def downloadSimJSON(self, file_path, local_folder):
+        print("download JSON TRND")
         host = "llrlsi-gw.in2p3.fr"
         user = "jeremy"
         with open('tornado_pwdfile.txt', 'r') as f: password = f.read()
@@ -305,7 +306,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.int_validator.setLocale(QtCore.QLocale("en_US"))
 
         self.MEMORY = psutil.virtual_memory
-        self.SCRIPT_VERSION ='0.4 "Threading"'
+        self.SCRIPT_VERSION ='0.4.1 "Threading"'
         self.COPY_RIGHT = "Jeremy LA PORTE"
         self.spyder_default_stdout = sys.stdout
 
@@ -549,11 +550,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.fields_time_EDIT = QtWidgets.QLineEdit("0")
 
         self.fields_time_EDIT.setValidator(self.float_validator)
-        self.fields_time_EDIT.setMaximumWidth(42)
+        self.fields_time_EDIT.setMaximumWidth(70) #42 FOR TOWER PC
 
         self.fields_zcut_EDIT = QtWidgets.QLineEdit("0")
         self.fields_zcut_EDIT.setValidator(self.float_validator)
-        self.fields_zcut_EDIT.setMaximumWidth(42)
+        self.fields_zcut_EDIT.setMaximumWidth(70)
 
         self.fields_play_time_BUTTON = QtWidgets.QPushButton("Play")
         self.fields_play_time_BUTTON.setMinimumHeight(15)
@@ -607,7 +608,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.track_time_EDIT = QtWidgets.QLineEdit("0")
         self.track_time_EDIT.setValidator(self.float_validator)
-        self.track_time_EDIT.setMaximumWidth(42)
+        self.track_time_EDIT.setMaximumWidth(70)
         self.track_time_SLIDER = QtWidgets.QSlider(QtCore.Qt.Horizontal)
         self.track_time_SLIDER.setMaximum(1)
         self.track_time_SLIDER.setMinimum(0)
@@ -684,11 +685,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.plasma_time_EDIT = QtWidgets.QLineEdit("0")
 
         self.plasma_time_EDIT.setValidator(self.float_validator)
-        self.plasma_time_EDIT.setMaximumWidth(42)
+        self.plasma_time_EDIT.setMaximumWidth(70) #42 FOR TOWER PC
 
         self.plasma_zcut_EDIT = QtWidgets.QLineEdit("0")
         self.plasma_zcut_EDIT.setValidator(self.float_validator)
-        self.plasma_zcut_EDIT.setMaximumWidth(42)
+        self.plasma_zcut_EDIT.setMaximumWidth(70) #42 FOR TOWER PC
 
         self.plasma_play_time_BUTTON = QtWidgets.QPushButton("Play")
         layoutTimeSlider = self.creatPara("t/t0=", self.plasma_time_EDIT ,adjust_label=True)
@@ -1124,6 +1125,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         time_idx = self.fields_time_SLIDER.sliderPosition()
         z_idx = self.fields_zcut_SLIDER.sliderPosition()
+        
 
         t1 = time.perf_counter()
         k=0
@@ -1165,6 +1167,7 @@ class MainWindow(QtWidgets.QMainWindow):
             print("===== INIT FIELDS TAB =====")
             # self.displayLoadingLabel(self.fields_groupBox)
             Ex_diag = self.S.Probe(0,"Ex")
+            l0 = 2*pi
             # fields_shape = np.array(self.S.Probe(0,"Ex").getData()).astype(np.float32).shape
 
             self.fields_paxisX = Ex_diag.getAxis("axis1")[:,0]-self.Ltrans/2
@@ -1172,8 +1175,10 @@ class MainWindow(QtWidgets.QMainWindow):
             self.fields_paxisZ = Ex_diag.getAxis("axis3")[:,2]
             self.extentXY = [self.fields_paxisX[0]/self.l0,self.fields_paxisX[-1]/self.l0,self.fields_paxisY[0]/self.l0,self.fields_paxisY[-1]/self.l0]
             self.extentZX = [self.fields_paxisZ[0]/self.l0,self.fields_paxisZ[-1]/self.l0,self.fields_paxisX[0]/self.l0,self.fields_paxisX[-1]/self.l0]
-
-            self.fields_t_range = self.S.Probe(0,"Ex").getTimes()
+            self.fields_t_range = Ex_diag.getTimes()
+            
+            del Ex_diag
+            
             self.fields_trans_mid_idx = len(self.fields_paxisY)//2
             self.fields_long_mid_idx = len(self.fields_paxisZ)//2
             self.fields_time_SLIDER.setMaximum(len(self.fields_t_range)-1)
@@ -1186,8 +1191,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
             self.fields_time_SLIDER.setValue(len(self.fields_t_range))
             self.fields_previous_zcut_SLIDER_value = self.fields_zcut_SLIDER.sliderPosition()
+            
+            self.fields_time_EDIT.setText(str(round(self.fields_t_range[-1]/l0,2)))
+            self.fields_zcut_EDIT.setText(str(round(self.fields_paxisZ[-1]/l0,2)))
 
-            byte_size_track = getsizeof(self.fields_paxisX)+getsizeof(self.fields_paxisY)+getsizeof(self.fields_paxisZ)+getsizeof(Ex_diag)
+
+            byte_size_track = getsizeof(self.fields_paxisX)+getsizeof(self.fields_paxisY)+getsizeof(self.fields_paxisZ)
             print("Memory from FIELDS:",round(byte_size_track*10**-6,1),"MB (",round(byte_size_track*100/self.MEMORY().total,1),"%)")
 
             # self.loading_LABEL.deleteLater()
@@ -1209,7 +1218,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 boolList[check_id] = False
                 # self.loading_LABEL.deleteLater()
                 return
-
 
             combo_box_index = self.sim_cut_direction_BOX.currentIndex()
 
@@ -1543,6 +1551,9 @@ class MainWindow(QtWidgets.QMainWindow):
             self.plasma_zcut_SLIDER.setMaximum(len(self.plasma_paxisZ_Bz)-1)
             self.plasma_time_SLIDER.setValue(len(self.plasma_t_range)-1)
             self.plasma_zcut_SLIDER.setValue(len(self.plasma_paxisZ_Bz)-2)
+            
+            self.plasma_time_EDIT.setText(str(round(self.plasma_t_range[-1]/l0,2)))
+            self.plasma_zcut_EDIT.setText(str(round(self.plasma_paxisZ_Bz[-1]/l0,2)))
 
             self.plasma_image_list = []
             self.plasma_data_list = []
@@ -1706,8 +1717,13 @@ class MainWindow(QtWidgets.QMainWindow):
         if CURRENT_NB_SIM_RUNNING < OLD_NB_SIM_RUNNING: #AT LEAST ONE SIMULATION HAS FINISHED
             for n,old_sim_id_int in enumerate(self.running_sim_hist):
                 if str(old_sim_id_int) not in list(self.sim_dict): #this simulation has finished
+                    finished_sim_path = self.previous_sim_dict[str(old_sim_id_int)]["job_full_path"]
+                    print(finished_sim_path,"is download is available !")
+                
+                
                     self.finished_sim_hist.append(old_sim_id_int)
                     self.running_sim_hist.remove(old_sim_id_int)
+                    self.can_doawnload_sim_dict[old_sim_id_int] = finished_sim_path
 
                     layout = self.layout_progress_bar_dict[str(old_sim_id_int)]
                     progress_bar = layout.itemAt(2).widget()
@@ -1729,8 +1745,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     close_BUTTON.clicked.connect(lambda: self.onCloseProgressBar(old_sim_id_int))
                     layout.addWidget(close_BUTTON)
 
-                    finished_sim_path = self.previous_sim_dict[str(old_sim_id_int)]["job_full_path"]
-                    print(finished_sim_path,"is download is available !")
+
 
         #================================
         # CHECK FOR NEW SIMULATIONS
@@ -1801,6 +1816,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.running_sim_hist = []
             self.finished_sim_hist = []
             self.layout_progress_bar_dict = {}
+            self.can_doawnload_sim_dict = {}
 
             for sim_id in self.sim_dict:
                 if sim_id == "datetime": continue #only open sim data and not metadata (located at the end of dict)
@@ -1823,6 +1839,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
             self.tornado_last_update_LABEL.setText(f"Last updated: {sim_datetime}")
             self.INIT_tabTornado = False
+            self.call_ThreadDownloadSimJSON()
             app.processEvents()
 
     def createLayoutProgressBar(self, sim_id, sim_progress, sim_name, sim_nodes, sim_ETA):
@@ -1888,7 +1905,7 @@ class MainWindow(QtWidgets.QMainWindow):
         print("===========================")
         print("downloading request for", sim_id)
 
-        job_full_path = self.previous_sim_dict[str(sim_id)]["job_full_path"]
+        job_full_path = self.can_doawnload_sim_dict[str(sim_id)]["job_full_path"]
         print(job_full_path)
         self.loadthread = ThreadDownloadSimData(job_full_path)
         self.loadthread.start()
@@ -1906,7 +1923,10 @@ class ProxyStyle(QtWidgets.QProxyStyle):
 if __name__ == '__main__':
     myappid = u'mycompany.myproduct.subproduct.version' # arbitrary string
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-
+    
+    QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
+    QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps, True)
+    
     qdarktheme.enable_hi_dpi()
 
 
