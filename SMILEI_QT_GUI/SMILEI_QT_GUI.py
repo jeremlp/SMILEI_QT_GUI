@@ -306,7 +306,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.int_validator.setLocale(QtCore.QLocale("en_US"))
 
         self.MEMORY = psutil.virtual_memory
-        self.SCRIPT_VERSION ='0.4.1 "Threading"'
+        self.SCRIPT_VERSION ='0.4.2 "Threading"'
         self.COPY_RIGHT = "Jeremy LA PORTE"
         self.spyder_default_stdout = sys.stdout
 
@@ -408,7 +408,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.geometry_LABEL.setFont(self.medium_FONT)
         layoutGeometry = self.creatPara("Geometry :", self.geometry_LABEL)
         boxLayout_sim_info.addLayout(layoutGeometry)
-        boxLayout_sim_info.addWidget(QtWidgets.QLabel("-"*20))
+        boxLayout_sim_info.addWidget(QtWidgets.QLabel("-"*25))
         self.w0_LABEL = QtWidgets.QLabel("")
         self.w0_LABEL.setFont(self.medium_FONT)
         layoutW0 = self.creatPara("w0 :", self.w0_LABEL)
@@ -419,11 +419,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.Tp_LABEL.setFont(self.medium_FONT)
         layoutTp = self.creatPara("Tp :", self.Tp_LABEL)
 
-        boxLayout_sim_info.addLayout(layoutW0)
         boxLayout_sim_info.addLayout(layoutA0)
+        boxLayout_sim_info.addLayout(layoutW0)
         boxLayout_sim_info.addLayout(layoutTp)
 
-        boxLayout_sim_info.addWidget(QtWidgets.QLabel("-"*20))
+        boxLayout_sim_info.addWidget(QtWidgets.QLabel("-"*25))
 
         self.Ltrans_LABEL = QtWidgets.QLabel("")
         self.Ltrans_LABEL.setFont(self.medium_FONT)
@@ -438,11 +438,16 @@ class MainWindow(QtWidgets.QMainWindow):
         boxLayout_sim_info.addLayout(layoutLtrans)
         boxLayout_sim_info.addLayout(layoutLlong)
         boxLayout_sim_info.addLayout(layoutTp)
-        boxLayout_sim_info.addWidget(QtWidgets.QLabel("-"*20))
+        boxLayout_sim_info.addWidget(QtWidgets.QLabel("-"*25))
         self.dx_LABEL = QtWidgets.QLabel("")
         self.dx_LABEL.setFont(self.medium_FONT)
         layoutDx = self.creatPara("dx :", self.dx_LABEL)
         boxLayout_sim_info.addLayout(layoutDx)
+
+        self.mesh_LABEL = QtWidgets.QLabel("")
+        self.mesh_LABEL.setFont(self.medium_FONT)
+        layoutMesh = self.creatPara("Mesh :", self.mesh_LABEL)
+        boxLayout_sim_info.addLayout(layoutMesh)
 
 
         verticalSpacer = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
@@ -995,6 +1000,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.a0_LABEL.setText(f"{self.a0}")
         self.Tp_LABEL.setText(f"{self.Tp/l0:.1f}𝝀")
         self.dx_LABEL.setText(f"𝝀/{l0/self.dx:.0f}")
+        mesh_trans = int(self.Ltrans/self.dx)
+        mesh_long = int(self.Llong/self.dx)
+        self.mesh_LABEL.setText(f"{mesh_trans} x {mesh_trans} x {mesh_long}")
+
         self.Ltrans_LABEL.setText(f"{self.Ltrans/l0:.1f}𝝀")
         self.Llong_LABEL.setText(f"{self.Llong/l0:.1f}𝝀")
         self.tsim_LABEL.setText(f"{self.tsim/l0:.1f}𝝀")
@@ -1125,7 +1134,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         time_idx = self.fields_time_SLIDER.sliderPosition()
         z_idx = self.fields_zcut_SLIDER.sliderPosition()
-        
+
 
         t1 = time.perf_counter()
         k=0
@@ -1176,9 +1185,9 @@ class MainWindow(QtWidgets.QMainWindow):
             self.extentXY = [self.fields_paxisX[0]/self.l0,self.fields_paxisX[-1]/self.l0,self.fields_paxisY[0]/self.l0,self.fields_paxisY[-1]/self.l0]
             self.extentZX = [self.fields_paxisZ[0]/self.l0,self.fields_paxisZ[-1]/self.l0,self.fields_paxisX[0]/self.l0,self.fields_paxisX[-1]/self.l0]
             self.fields_t_range = Ex_diag.getTimes()
-            
+
             del Ex_diag
-            
+
             self.fields_trans_mid_idx = len(self.fields_paxisY)//2
             self.fields_long_mid_idx = len(self.fields_paxisZ)//2
             self.fields_time_SLIDER.setMaximum(len(self.fields_t_range)-1)
@@ -1191,7 +1200,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
             self.fields_time_SLIDER.setValue(len(self.fields_t_range))
             self.fields_previous_zcut_SLIDER_value = self.fields_zcut_SLIDER.sliderPosition()
-            
+
             self.fields_time_EDIT.setText(str(round(self.fields_t_range[-1]/l0,2)))
             self.fields_zcut_EDIT.setText(str(round(self.fields_paxisZ[-1]/l0,2)))
 
@@ -1551,7 +1560,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.plasma_zcut_SLIDER.setMaximum(len(self.plasma_paxisZ_Bz)-1)
             self.plasma_time_SLIDER.setValue(len(self.plasma_t_range)-1)
             self.plasma_zcut_SLIDER.setValue(len(self.plasma_paxisZ_Bz)-2)
-            
+
             self.plasma_time_EDIT.setText(str(round(self.plasma_t_range[-1]/l0,2)))
             self.plasma_zcut_EDIT.setText(str(round(self.plasma_paxisZ_Bz[-1]/l0,2)))
 
@@ -1719,11 +1728,11 @@ class MainWindow(QtWidgets.QMainWindow):
                 if str(old_sim_id_int) not in list(self.sim_dict): #this simulation has finished
                     finished_sim_path = self.previous_sim_dict[str(old_sim_id_int)]["job_full_path"]
                     print(finished_sim_path,"is download is available !")
-                
-                
+
+
                     self.finished_sim_hist.append(old_sim_id_int)
                     self.running_sim_hist.remove(old_sim_id_int)
-                    self.can_doawnload_sim_dict[old_sim_id_int] = finished_sim_path
+                    self.can_doawnload_sim_dict[int(old_sim_id_int)] = finished_sim_path
 
                     layout = self.layout_progress_bar_dict[str(old_sim_id_int)]
                     progress_bar = layout.itemAt(2).widget()
@@ -1923,10 +1932,10 @@ class ProxyStyle(QtWidgets.QProxyStyle):
 if __name__ == '__main__':
     myappid = u'mycompany.myproduct.subproduct.version' # arbitrary string
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-    
+
     QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
     QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps, True)
-    
+
     qdarktheme.enable_hi_dpi()
 
 
