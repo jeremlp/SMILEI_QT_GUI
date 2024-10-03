@@ -28,6 +28,8 @@ import time
 import gc
 import psutil
 from scipy.interpolate import griddata
+from scipy import integrate
+
 import ctypes
 
 from log_dialog import *
@@ -38,6 +40,9 @@ import subprocess
 import json
 from pathlib import Path
 from functools import partial
+from win11toast import toast
+from pyqttoast import Toast, ToastPreset
+import decimal
 
 class ThreadDownloadSimJSON(QtCore.QThread):
     def __init__(self, file_path, local_folder, parent=None):
@@ -153,25 +158,27 @@ class ThreadGetPlasmaProbeData(QtCore.QThread):
 
         t0 = time.perf_counter()
         Naxis = sum(boolList)
-        plasma_names =np.array(["Bz","Bz_trans","ne","ne_trans"])
+        plasma_names =np.array(["Bz","Bz_trans","ne","ne_trans","ptheta","ptheta_trans"])
         selected_plasma_names = plasma_names[boolList]
         for i in range(Naxis):
             if selected_plasma_names[i] == "Bz":
-                Bz_long_diag = S.Probe(1,"Bz")
-                Bz_long = np.array(Bz_long_diag.getData())
-                plasma_data_list.append(Bz_long)
+                Bz_long_diag = S.Probe("long","Bz")
+                plasma_data_list.append(np.array(Bz_long_diag.getData()))
             if selected_plasma_names[i] == "Bz_trans":
-                Bz_trans_diag = S.Probe(2,"Bz")
-                Bz_trans = np.array(Bz_trans_diag.getData())
-                plasma_data_list.append(Bz_trans)
+                Bz_trans_diag = S.Probe("trans","Bz")
+                plasma_data_list.append(np.array(Bz_trans_diag.getData()))
             if selected_plasma_names[i] == "ne":
-                Bweight_XY = S.ParticleBinning("weight")
-                Weight_long = np.array(Bweight_XY.getData())
-                plasma_data_list.append(Weight_long)
+                Bweight_long = S.ParticleBinning("weight")
+                plasma_data_list.append(np.array(Bweight_long.getData()))
             if selected_plasma_names[i] == "ne_trans":
-                Bweight_XY = S.ParticleBinning("weight_trans")
-                Weight_trans = np.array(Bweight_XY.getData())
-                plasma_data_list.append(Weight_trans)
+                Bweight_trans = S.ParticleBinning("weight_trans")
+                plasma_data_list.append(np.array(Bweight_trans.getData()))
+            if selected_plasma_names[i] == "ptheta":
+                Bptheta_long = S.ParticleBinning("ptheta_W")
+                plasma_data_list.append(np.array(Bptheta_long.getData()))
+            if selected_plasma_names[i] == "ptheta_trans":
+                Bptheta_trans = S.ParticleBinning("ptheta_W_trans")
+                plasma_data_list.append(np.array(Bptheta_trans.getData()))
         t1 = time.perf_counter()
         print(round(t1-t0,2),"s")
         return plasma_data_list
@@ -216,6 +223,7 @@ class MainWindow(QtWidgets.QMainWindow):
         font-size: 14px;
         border-radius: 15px;
         background-color:#f0f0f0;
+        font-size:10pt;
         }
         """
         self.dark_qss_groupBox = """
@@ -226,6 +234,7 @@ class MainWindow(QtWidgets.QMainWindow):
         font-size: 14px;
         border-radius: 15px;
         background-color:#101010;
+        font-size: 13;
         }
         """
         self.light_qss_tab = """
@@ -281,6 +290,22 @@ class MainWindow(QtWidgets.QMainWindow):
             background: #dfdfdf;
             }
         """
+        self.qss_progressBar_DOWNLOADED = """
+        QProgressBar::chunk {
+            background-color: rgb(0, 179, 0);
+            background-color: qlineargradient(x1: 0, y1: 0.5, x2: 1, y2: 0.5,
+                            stop: 0 #083d58,
+                            stop: 1 #0e6e9e);
+        }
+        QProgressBar {
+            border: 2px solid #acacac;
+            border-radius: 0px;
+            text-align: center;
+            color: black;
+            background: #dfdfdf;
+            }
+        """       
+        
         self.theme = "light"
         if self.theme == "dark":
             self.qss = self.dark_qss_groupBox + self.dark_qss_tab + self.dark_qss_label + self.qss_button + self.qss_progressBar
@@ -297,7 +322,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.small_bold_FONT=QtGui.QFont("Arial", 8,QFont.Bold)
         self.medium_bold_FONT=QtGui.QFont("Arial", 12,QFont.Bold)
 
-        self.medium_FONT=QtGui.QFont("Arial", 12)
+        self.medium_FONT=QtGui.QFont("Arial", 11)
 
         self.float_validator = QtGui.QDoubleValidator(0.00, 999.99, 2)
         self.float_validator.setLocale(QtCore.QLocale("en_US"))
@@ -306,7 +331,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.int_validator.setLocale(QtCore.QLocale("en_US"))
 
         self.MEMORY = psutil.virtual_memory
-        self.SCRIPT_VERSION ='0.4.2 "Threading"'
+        self.SCRIPT_VERSION ='0.5.2 "Scalar + plasma + labels"'
         self.COPY_RIGHT = "Jeremy LA PORTE"
         self.spyder_default_stdout = sys.stdout
 
@@ -328,13 +353,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.actionOpenSim = QtWidgets.QAction("Open Simulation",self)
         self.actionOpenLogs = QtWidgets.QAction("Open Logs",self)
         self.actionOpenIPython = QtWidgets.QAction("Open IPython",self)
-
+        
+        self.actionDiagScalar = QtWidgets.QAction("Scalar",self)
         self.actionDiagFields = QtWidgets.QAction("Fields",self)
         self.actionDiagTrack = QtWidgets.QAction("Track",self)
         self.actionDiagPlasma = QtWidgets.QAction("Plasma",self)
-
         self.actionTornado = QtWidgets.QAction("Tornado",self)
-
+        
+        self.actionDiagScalar.setCheckable(True)
         self.actionDiagFields.setCheckable(True)
         self.actionDiagTrack.setCheckable(True)
         self.actionDiagPlasma.setCheckable(True)
@@ -346,6 +372,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.fileMenu.addAction(self.actionOpenIPython)
         self.menuBar.addAction(self.fileMenu.menuAction())
 
+        self.editMenu.addAction(self.actionDiagScalar)        
         self.editMenu.addAction(self.actionDiagFields)
         self.editMenu.addAction(self.actionDiagTrack)
         self.editMenu.addAction(self.actionDiagPlasma)
@@ -357,8 +384,8 @@ class MainWindow(QtWidgets.QMainWindow):
         # SETTINGS
         #==============================
         self.settings_groupBox = QtWidgets.QGroupBox("Open Simulation")
-        self.settings_groupBox.setMinimumWidth(220)
-        self.settings_groupBox.setMaximumWidth(220)
+        self.settings_groupBox.setMinimumWidth(300)
+        self.settings_groupBox.setMaximumWidth(300)
         boxLayout_settings = QtWidgets.QVBoxLayout()
 
         # self.cluster_base_path_LEDIT = QtWidgets.QLineEdit("D:/JLP/CMI/_MASTER 2_/_STAGE_LULI_/CLUSTER")
@@ -400,8 +427,8 @@ class MainWindow(QtWidgets.QMainWindow):
         # SIM INFO
         #==============================
         self.sim_info_groupBox = QtWidgets.QGroupBox("Simulation Parameters")
-        self.sim_info_groupBox.setMinimumWidth(220)
-        self.sim_info_groupBox.setMaximumWidth(220)
+        self.sim_info_groupBox.setMinimumWidth(300)
+        self.sim_info_groupBox.setMaximumWidth(300)
         boxLayout_sim_info = QtWidgets.QVBoxLayout()
 
         self.geometry_LABEL = QtWidgets.QLabel("")
@@ -418,10 +445,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.Tp_LABEL = QtWidgets.QLabel("")
         self.Tp_LABEL.setFont(self.medium_FONT)
         layoutTp = self.creatPara("Tp :", self.Tp_LABEL)
+        
+        self.Pola_LABEL = QtWidgets.QLabel("")
+        self.Pola_LABEL.setFont(self.medium_FONT)
+        layoutPola = self.creatPara("σ, l :", self.Pola_LABEL)
+        
 
         boxLayout_sim_info.addLayout(layoutA0)
         boxLayout_sim_info.addLayout(layoutW0)
         boxLayout_sim_info.addLayout(layoutTp)
+        boxLayout_sim_info.addLayout(layoutPola)
 
         boxLayout_sim_info.addWidget(QtWidgets.QLabel("-"*25))
 
@@ -448,6 +481,45 @@ class MainWindow(QtWidgets.QMainWindow):
         self.mesh_LABEL.setFont(self.medium_FONT)
         layoutMesh = self.creatPara("Mesh :", self.mesh_LABEL)
         boxLayout_sim_info.addLayout(layoutMesh)
+        
+        boxLayout_sim_info.addWidget(QtWidgets.QLabel("-"*25))
+
+        plasma_param_LABEL= QtWidgets.QLabel("PLASMA PARAMETERS")
+        plasma_param_LABEL.setFont(self.small_bold_FONT)
+        plasma_param_LABEL.setAlignment(QtCore.Qt.AlignCenter)
+        boxLayout_sim_info.addWidget(plasma_param_LABEL)
+        self.density_LABEL= QtWidgets.QLabel("")
+        self.density_LABEL.setFont(self.medium_FONT)
+        layoutDensity = self.creatPara("ne0 :", self.density_LABEL)
+        self.nppc_LABEL = QtWidgets.QLabel("")
+        self.nppc_LABEL.setFont(self.medium_FONT)
+        layoutNPPC = self.creatPara("nppc :", self.nppc_LABEL)
+        boxLayout_sim_info.addLayout(layoutDensity)
+        boxLayout_sim_info.addLayout(layoutNPPC)
+        
+        boxLayout_sim_info.addWidget(QtWidgets.QLabel("-"*25))
+        
+        SI_assume_LABEL= QtWidgets.QLabel("SI UNITS (𝝀 = 1 µm)")
+        SI_assume_LABEL.setFont(self.small_bold_FONT)
+        SI_assume_LABEL.setAlignment(QtCore.Qt.AlignCenter)
+        boxLayout_sim_info.addWidget(SI_assume_LABEL)
+        
+        self.Tp_SI_LABEL= QtWidgets.QLabel("")
+        self.Tp_SI_LABEL.setFont(self.medium_FONT)
+        layoutTp_SI = self.creatPara("Tp :", self.Tp_SI_LABEL)
+        self.energy_SI_LABEL = QtWidgets.QLabel("")
+        self.energy_SI_LABEL.setFont(self.medium_FONT)
+        layoutEnergy_SI = self.creatPara("Energy :", self.energy_SI_LABEL)
+        self.power_SI_LABEL = QtWidgets.QLabel("")
+        self.power_SI_LABEL.setFont(self.medium_FONT)
+        layoutPower_SI = self.creatPara("Power :", self.power_SI_LABEL)      
+        self.intensity_SI_LABEL = QtWidgets.QLabel("")
+        self.intensity_SI_LABEL.setFont(self.medium_FONT)
+        layoutIntensity_SI = self.creatPara("Intensity :", self.intensity_SI_LABEL)
+        boxLayout_sim_info.addLayout(layoutTp_SI)
+        boxLayout_sim_info.addLayout(layoutEnergy_SI)
+        boxLayout_sim_info.addLayout(layoutPower_SI)
+        boxLayout_sim_info.addLayout(layoutIntensity_SI)
 
 
         verticalSpacer = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
@@ -464,36 +536,77 @@ class MainWindow(QtWidgets.QMainWindow):
         #==============================
         # TAB WIDGET
         #==============================
+        #--------------------
+        # TAB 0
+        #--------------------
+        self.figure_0 = Figure()
+        self.canvas_0 = FigureCanvas(self.figure_0)
+        self.plt_toolbar_0 = NavigationToolbar(self.canvas_0)
+        self.plt_toolbar_0.setFixedHeight(35) 
+        
+        fontsize = 12
+        self.Utot_CHECK = QtWidgets.QCheckBox()
+        layoutUtot = self.creatPara("Utot ", self.Utot_CHECK,adjust_label=True,fontsize=fontsize)
+        self.Uelm_CHECK = QtWidgets.QCheckBox()
+        layoutUelm = self.creatPara("Uelm ", self.Uelm_CHECK,adjust_label=True,fontsize=fontsize)
+        self.Ukin_CHECK = QtWidgets.QCheckBox()
+        layoutUkin = self.creatPara("Ukin ", self.Ukin_CHECK,adjust_label=True,fontsize=fontsize)
+        self.AM_CHECK = QtWidgets.QCheckBox()
+        layoutAM = self.creatPara("AM ", self.AM_CHECK,adjust_label=True,fontsize=fontsize)
+        
+        layoutTabSettingsCheck = QtWidgets.QHBoxLayout()
+        layoutTabSettingsCheck.addLayout(layoutUtot)
+        layoutTabSettingsCheck.addLayout(layoutUelm)
+        layoutTabSettingsCheck.addLayout(layoutUkin)
+        layoutTabSettingsCheck.addLayout(layoutAM)
+        
+        layoutTabSettings = QtWidgets.QVBoxLayout()
+        layoutTabSettings.addLayout(layoutTabSettingsCheck)
+        layoutTabSettings.addWidget(self.plt_toolbar_0)
 
+        
+        self.scalar_groupBox = QtWidgets.QGroupBox("Scalar Diagnostics")
+        self.scalar_groupBox.setMinimumHeight(210)
+        self.scalar_groupBox.setMaximumHeight(210)
+        self.scalar_groupBox.setLayout(layoutTabSettings)
+
+        self.layoutScalar = QtWidgets.QVBoxLayout()
+        self.layoutScalar.addWidget(self.scalar_groupBox)
+        self.layoutScalar.addWidget(self.canvas_0)
+
+        self.scalar_Widget = QtWidgets.QWidget()
+        self.scalar_Widget.setLayout(self.layoutScalar)
+        
         #--------------------
         # TAB 1
         #--------------------
         self.figure_1 = Figure()
         self.canvas_1 = FigureCanvas(self.figure_1)
         self.plt_toolbar_1 = NavigationToolbar(self.canvas_1, self)
-        self.plt_toolbar_1.setFixedHeight(40)
-
+        self.plt_toolbar_1.setFixedHeight(35)
+        
+        fontsize = 12
         self.Ex_CHECK = QtWidgets.QCheckBox()
-        layoutEx = self.creatPara("Ex ", self.Ex_CHECK,adjust_label=True,fontsize=12)
+        layoutEx = self.creatPara("Ex ", self.Ex_CHECK,adjust_label=True,fontsize=fontsize)
         self.Ey_CHECK = QtWidgets.QCheckBox()
-        layoutEy = self.creatPara("Ey ", self.Ey_CHECK,adjust_label=True,fontsize=12)
+        layoutEy = self.creatPara("Ey ", self.Ey_CHECK,adjust_label=True,fontsize=fontsize)
         self.Ez_CHECK = QtWidgets.QCheckBox()
-        layoutEz = self.creatPara("Ez ", self.Ez_CHECK,adjust_label=True,fontsize=12)
+        layoutEz = self.creatPara("Ez ", self.Ez_CHECK,adjust_label=True,fontsize=fontsize)
         self.Bx_CHECK = QtWidgets.QCheckBox()
-        layoutBx = self.creatPara("Bx ", self.Bx_CHECK,adjust_label=True,fontsize=12)
+        layoutBx = self.creatPara("Bx ", self.Bx_CHECK,adjust_label=True,fontsize=fontsize)
         self.By_CHECK = QtWidgets.QCheckBox()
-        layoutBy = self.creatPara("By ", self.By_CHECK,adjust_label=True,fontsize=12)
+        layoutBy = self.creatPara("By ", self.By_CHECK,adjust_label=True,fontsize=fontsize)
         self.Bz_CHECK = QtWidgets.QCheckBox()
-        layoutBz = self.creatPara("Bz ", self.Bz_CHECK,adjust_label=True,fontsize=12)
+        layoutBz = self.creatPara("Bz ", self.Bz_CHECK,adjust_label=True,fontsize=fontsize)
 
         self.Er_CHECK = QtWidgets.QCheckBox()
-        layoutEr = self.creatPara("Er ", self.Er_CHECK,adjust_label=True,fontsize=12)
+        layoutEr = self.creatPara("Er ", self.Er_CHECK,adjust_label=True,fontsize=fontsize)
         self.Etheta_CHECK = QtWidgets.QCheckBox()
-        layoutEtheta = self.creatPara("Eθ ", self.Etheta_CHECK,adjust_label=True,fontsize=12)
+        layoutEtheta = self.creatPara("Eθ ", self.Etheta_CHECK,adjust_label=True,fontsize=fontsize)
         self.Br_CHECK = QtWidgets.QCheckBox()
-        layoutBr = self.creatPara("Br ", self.Br_CHECK,adjust_label=True,fontsize=12)
+        layoutBr = self.creatPara("Br ", self.Br_CHECK,adjust_label=True,fontsize=fontsize)
         self.Btheta_CHECK = QtWidgets.QCheckBox()
-        layoutBtheta = self.creatPara("Bθ ", self.Btheta_CHECK,adjust_label=True,fontsize=12)
+        layoutBtheta = self.creatPara("Bθ ", self.Btheta_CHECK,adjust_label=True,fontsize=fontsize)
 
         separator1 = QtWidgets.QFrame()
         separator1.setFrameShape(QtWidgets.QFrame.VLine)
@@ -576,8 +689,8 @@ class MainWindow(QtWidgets.QMainWindow):
         layoutTabSettings.addWidget(self.plt_toolbar_1)
 
         self.fields_groupBox = QtWidgets.QGroupBox("Fields Diagnostics")
-        self.fields_groupBox.setMinimumHeight(180)
-        self.fields_groupBox.setMaximumHeight(190)
+        self.fields_groupBox.setMinimumHeight(210)
+        self.fields_groupBox.setMaximumHeight(210)
         self.fields_groupBox.setLayout(layoutTabSettings)
 
         self.layoutFields = QtWidgets.QVBoxLayout()
@@ -593,7 +706,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.figure_2 = Figure()
         self.canvas_2 = FigureCanvas(self.figure_2)
         self.plt_toolbar_2 = NavigationToolbar(self.canvas_2, self)
-        self.plt_toolbar_2.setFixedHeight(40)
+        self.plt_toolbar_2.setFixedHeight(35)
 
         self.track_file_BOX = QtWidgets.QComboBox()
         self.track_file_BOX.addItem("track_eon")
@@ -638,12 +751,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.track_Widget.setLayout(self.layoutTrack)
 
         #--------------------
-        # TAB 3 TRACK
+        # TAB 3 PLASMA
         #--------------------
         self.figure_3 = Figure()
         self.canvas_3 = FigureCanvas(self.figure_3)
         self.plt_toolbar_3 = NavigationToolbar(self.canvas_3, self)
-        self.plt_toolbar_3.setFixedHeight(40)
+        self.plt_toolbar_3.setFixedHeight(35)
 
         self.plasma_Bz_CHECK = QtWidgets.QCheckBox()
         layoutBz = self.creatPara("Bz ", self.plasma_Bz_CHECK,adjust_label=True,fontsize=12)
@@ -653,6 +766,11 @@ class MainWindow(QtWidgets.QMainWindow):
         layoutNe = self.creatPara("ne ", self.plasma_ne_CHECK,adjust_label=True,fontsize=12)
         self.plasma_ne_trans_CHECK = QtWidgets.QCheckBox()
         layoutNeTrans = self.creatPara("ne_trans ", self.plasma_ne_trans_CHECK,adjust_label=True,fontsize=12)
+        
+        self.plasma_ptheta_CHECK = QtWidgets.QCheckBox()
+        layoutPtheta = self.creatPara("ptheta ", self.plasma_ptheta_CHECK,adjust_label=True,fontsize=12)
+        self.plasma_ptheta_trans_CHECK = QtWidgets.QCheckBox()
+        layoutPthetaTrans = self.creatPara("ptheta_trans ", self.plasma_ptheta_trans_CHECK,adjust_label=True,fontsize=12)
 
         separator1 = QtWidgets.QFrame()
         separator1.setFrameShape(QtWidgets.QFrame.VLine)
@@ -677,7 +795,8 @@ class MainWindow(QtWidgets.QMainWindow):
         layoutTabSettingsCheck.addWidget(separator1)
         layoutTabSettingsCheck.addLayout(layoutNe)
         layoutTabSettingsCheck.addLayout(layoutNeTrans)
-
+        layoutTabSettingsCheck.addLayout(layoutPtheta)
+        layoutTabSettingsCheck.addLayout(layoutPthetaTrans)
         layoutTabSettingsCheck.setSpacing(20)
 
         self.plasma_time_SLIDER = QtWidgets.QSlider(QtCore.Qt.Horizontal)
@@ -711,8 +830,8 @@ class MainWindow(QtWidgets.QMainWindow):
         layoutTabSettings.addWidget(self.plt_toolbar_3)
 
         self.plasma_groupBox = QtWidgets.QGroupBox("Fields Diagnostics")
-        self.plasma_groupBox.setMinimumHeight(170)
-        self.plasma_groupBox.setMaximumHeight(180)
+        self.plasma_groupBox.setMinimumHeight(210)
+        self.plasma_groupBox.setMaximumHeight(210)
         self.plasma_groupBox.setLayout(layoutTabSettings)
 
         self.layoutPlasma = QtWidgets.QVBoxLayout()
@@ -739,16 +858,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.tornado_last_update_LABEL = QtWidgets.QLabel("LOADING...")
         self.tornado_last_update_LABEL.setFont(QFont('Arial', 12))
         tornado_group_box_layout.addWidget(self.tornado_last_update_LABEL)
+        
+        
+        self.tornado_refresh_BUTTON = QtWidgets.QPushButton("Refresh")
+        tornado_group_box_layout.addWidget(self.tornado_refresh_BUTTON)
+        
+
         self.tornado_groupBox.setLayout(tornado_group_box_layout)
-
-
         self.layoutTornado.addWidget(self.tornado_groupBox)
-        # self.tornado_PROGRESS_BAR1 = QtWidgets.QProgressBar(maximum=100)
-        # self.tornado_PROGRESS_BAR2 = QtWidgets.QProgressBar(maximum=100)
-        # layoutProgressBar1 = self.creatPara("Sim 1", self.tornado_PROGRESS_BAR1)
-        # layoutProgressBar2 = self.creatPara("Sim 2", self.tornado_PROGRESS_BAR2)
-        # self.layoutTornado.addLayout(layoutProgressBar)
-        # self.layoutTornado.addLayout(layoutProgressBar)
+
         self.tornado_Widget.setLayout(self.layoutTornado)
 
 
@@ -800,7 +918,11 @@ class MainWindow(QtWidgets.QMainWindow):
         # self.coeflog.valueChanged.connect(self.plot)
         # self.load_sim_BUTTON.clicked.connect(self.onLoadSim)
         self.load_sim_BUTTON.clicked.connect(self.onOpenSim)
-
+        
+        self.Utot_CHECK.clicked.connect(lambda: self.onUpdateTabScalar(0))
+        self.Uelm_CHECK.clicked.connect(lambda: self.onUpdateTabScalar(1))
+        self.Ukin_CHECK.clicked.connect(lambda: self.onUpdateTabScalar(2))
+        self.AM_CHECK.clicked.connect(lambda: self.onUpdateTabScalar(3))
 
         self.Ex_CHECK.clicked.connect(lambda: self.onUpdateTabFields(0))
         self.Ey_CHECK.clicked.connect(lambda: self.onUpdateTabFields(1))
@@ -834,7 +956,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.plasma_Bz_trans_CHECK.clicked.connect(lambda: self.onUpdateTabPlasma(1))
         self.plasma_ne_CHECK.clicked.connect(lambda: self.onUpdateTabPlasma(2))
         self.plasma_ne_trans_CHECK.clicked.connect(lambda: self.onUpdateTabPlasma(3))
-
+        self.plasma_ptheta_CHECK.clicked.connect(lambda: self.onUpdateTabPlasma(4))
+        self.plasma_ptheta_trans_CHECK.clicked.connect(lambda: self.onUpdateTabPlasma(5))
+        
         self.plasma_time_SLIDER.sliderMoved.connect(lambda: self.onUpdateTabPlasma(100))
         self.plasma_time_SLIDER.sliderPressed.connect(lambda: self.onUpdateTabPlasma(100))
         self.plasma_time_EDIT.returnPressed.connect(lambda: self.onUpdateTabPlasma(101))
@@ -842,8 +966,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.plasma_zcut_SLIDER.sliderPressed.connect(lambda: self.onUpdateTabPlasma(200))
         self.plasma_zcut_EDIT.returnPressed.connect(lambda: self.onUpdateTabPlasma(201))
         self.plasma_play_time_BUTTON.clicked.connect(lambda: self.onUpdateTabPlasma(1000))
+        
+        self.tornado_refresh_BUTTON.clicked.connect(self.call_ThreadDownloadSimJSON)
 
         #Open and Close Tabs
+        self.actionDiagScalar.toggled.connect(lambda: self.onMenuTabs("SCALAR"))
         self.actionDiagFields.toggled.connect(lambda: self.onMenuTabs("FIELDS"))
         self.actionDiagTrack.toggled.connect(lambda: self.onMenuTabs("TRACK"))
         self.actionDiagPlasma.toggled.connect(lambda: self.onMenuTabs("PLASMA"))
@@ -879,6 +1006,7 @@ class MainWindow(QtWidgets.QMainWindow):
         #============================
         # GENERAL VARIABLES
         #============================
+        self.INIT_tabScalar = None
         self.INIT_tabFields = None
         self.INIT_tabTrack = None
         self.INIT_tabPlasma = None
@@ -992,13 +1120,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.Ltrans = self.S.namelist.Ltrans
         self.Llong = self.S.namelist.Lz
         self.tsim = self.S.namelist.tsim
+        self.l1 = self.S.namelist.l1
+        self.eps = self.S.namelist.eps
         self.sim_geometry = self.S.namelist.Main.geometry
 
         # print(self.dx)
         self.geometry_LABEL.setText(f"{self.sim_geometry}")
         self.w0_LABEL.setText(f"{self.w0/l0:.1f}𝝀")
-        self.a0_LABEL.setText(f"{self.a0}")
+        self.a0_LABEL.setText(f"{self.a0:.2f}")
         self.Tp_LABEL.setText(f"{self.Tp/l0:.1f}𝝀")
+        self.Pola_LABEL.setText(f"{self.eps}, {self.l1}")
         self.dx_LABEL.setText(f"𝝀/{l0/self.dx:.0f}")
         mesh_trans = int(self.Ltrans/self.dx)
         mesh_long = int(self.Llong/self.dx)
@@ -1007,13 +1138,41 @@ class MainWindow(QtWidgets.QMainWindow):
         self.Ltrans_LABEL.setText(f"{self.Ltrans/l0:.1f}𝝀")
         self.Llong_LABEL.setText(f"{self.Llong/l0:.1f}𝝀")
         self.tsim_LABEL.setText(f"{self.tsim/l0:.1f}𝝀")
+        
+        
+        self.intensity_SI = (self.a0/0.85)**2 *10**18 #W/cm^2
+        
+        self.power_SI = self.intensity_SI * pi*(self.w0/l0*10**-4)**2/2
+        
+        me = 9.1093837*10**-31
+        e = 1.60217663*10**-19
+        c = 299792458
+        eps0 = 8.854*10**-12
+        wr = 2*pi*c/1e-6
+        K = me*c**2
+        N = eps0*me*wr**2/e**2
+        L = c/wr
+        KNL3 = K*N*L**3
+        self.energy_SI = np.max(self.S.Scalar("Uelm").getData())*1000*KNL3
+        self.Tp_SI = self.Tp/wr*10**15
+        
+        self.intensity_SI_LABEL.setText(f"{'%.1E' % decimal.Decimal(str(self.intensity_SI))} W/cm²")
+        self.power_SI_LABEL.setText(f"{self.printSI(self.power_SI,'W',ndeci=2):}")
+        self.energy_SI_LABEL.setText(f"{self.energy_SI:.2f} mJ")
+        self.Tp_SI_LABEL.setText(f"{self.Tp_SI:.0f} fs")
+        
+        
+        self.nppc_LABEL.setText(f"{self.S.namelist.nppc_plasma}")
+        self.density_LABEL.setText(f"{self.S.namelist.ne} nc")
 
         self.is_sim_loaded = True
+        self.INIT_tabScalar = True
         self.INIT_tabFields = True
         self.INIT_tabTrack = True
         self.INIT_tabPlasma = True
 
         self.updateInfoLabelMem()
+        if self.actionDiagScalar.isChecked(): self.onUpdateTabScalar(0)
         if self.actionDiagFields.isChecked(): self.onUpdateTabFields(0)
         if self.actionDiagTrack.isChecked(): self.onUpdateTabTrack(0)
         if self.actionDiagPlasma.isChecked(): self.onUpdateTabPlasma(0)
@@ -1037,6 +1196,9 @@ class MainWindow(QtWidgets.QMainWindow):
     def onCloseTab(self, currentIndex):
           tab_name = self.programm_TABS.tabText(currentIndex)
           self.programm_TABS.removeTab(currentIndex)
+          if tab_name=="SCALAR":
+              self.actionDiagScalar.setChecked(False)
+              self.onRemoveScalar()
           if tab_name=="FIELDS":
               self.actionDiagFields.setChecked(False)
               self.onRemoveFields()
@@ -1052,7 +1214,19 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def onMenuTabs(self, tab_name):
         self.tab2 = self.track_Widget
-
+        
+        if tab_name == "SCALAR":
+            if not self.actionDiagScalar.isChecked():
+                for currentIndex in range(self.programm_TABS.count()):
+                    if self.programm_TABS.tabText(currentIndex) == "SCALAR":
+                        self.programm_TABS.removeTab(currentIndex)
+                        self.onRemoveScalar()
+            else:
+                self.programm_TABS.addTab(self.scalar_Widget,"SCALAR")
+                self.INIT_tabScalar = True
+                app.processEvents()
+                self.onUpdateTabScalar(0)
+                
         if tab_name == "FIELDS":
             if not self.actionDiagFields.isChecked():
                 for currentIndex in range(self.programm_TABS.count()):
@@ -1105,11 +1279,91 @@ class MainWindow(QtWidgets.QMainWindow):
                 # self.loadthread.finished.connect(self.onInitTabTornado)
                 # self.loadthread.start()
                 # self.onInitTabTornado()
-
         self.updateInfoLabelMem()
+        return
 
+    def onUpdateTabScalar(self, check_id):
+        print(check_id)
+        if self.INIT_tabScalar == None or self.is_sim_loaded == False: return
+        self.INIT_tabScalar = False
+        
+        l0 = 2*pi
+        check_list = [self.Utot_CHECK, self.Uelm_CHECK,self.Ukin_CHECK,self.AM_CHECK]
+        boolList = [check.isChecked() for check in check_list]
+        print(boolList)
+        self.scalar_names = ["Utot","Uelm","Ukin","AM"]
+        self.scalar_t_range = self.S.Scalar("Uelm").getTimes()
+        
+        if len(self.figure_0.axes) !=0:
+            for ax in self.figure_0.axes: ax.remove()
+            
+        ax = self.figure_0.add_subplot(1,1,1)
+        
+        Utot_tot = integrate.simpson(self.S.Scalar("Utot").getData(), x = self.scalar_t_range)
+        Uelm_tot = integrate.simpson(self.S.Scalar("Uelm").getData(), x = self.scalar_t_range)
+        Ukin_tot = integrate.simpson(self.S.Scalar("Ukin").getData(), x = self.scalar_t_range)
+        
+        Utot_tot = np.max(self.S.Scalar("Utot").getData())
+        Uelm_tot = np.max(self.S.Scalar("Uelm").getData())
+        Ukin_tot = np.max(self.S.Scalar("Ukin").getData())
+        
+        AM_tot = np.NaN
+        
+        for i in range(len(self.scalar_names)): 
+            if boolList[i]: 
+                if self.scalar_names[i] != "AM":
+                    im = ax.plot(self.scalar_t_range/l0, self.S.Scalar(self.scalar_names[i]).getData(),
+                                            label=self.scalar_names[i])
+                else:
+                    fields_t_range = self.S.Probe(0,"Ex").getTimes()
+                    fields_paxisX = self.S.Probe(0,"Ex").getAxis("axis1")[:,0]-self.Ltrans/2
+                    fields_paxisY = self.S.Probe(0,"Ex").getAxis("axis2")[:,1]-self.Ltrans/2
 
+                    fields_paxisZ = self.S.Probe(0,"Ex").getAxis("axis3")[:,2]
+                    X,Y,Z = np.meshgrid(fields_paxisX,fields_paxisY,fields_paxisZ,indexing="ij")
+                    
+                    Ex = np.array(self.S.Probe(0,"Ex").getData()).astype(np.float32)
+                    Ey = np.array(self.S.Probe(0,"Ey").getData()).astype(np.float32)
+                    Ez = np.array(self.S.Probe(0,"Ez").getData()).astype(np.float32)
+                    Bx = np.array(self.S.Probe(0,"Bx").getData()).astype(np.float32)
+                    By = np.array(self.S.Probe(0,"By").getData()).astype(np.float32)
+                    Bz = np.array(self.S.Probe(0,"Bz").getData()).astype(np.float32)
+                    
+                    print(Ex.shape)
+                    AM = X*(Ez*Bx-Ex*Bz)-Y*(Ey*Bz-Ez*By)
+                    print(AM.shape)
 
+                    AM_trans_int = integrate.simpson(integrate.simpson(AM[:,:,:,:],x=fields_paxisX,axis=1),x=fields_paxisY,axis=1)
+                    print(AM_trans_int.shape)
+                    AM_full_int = integrate.simpson(AM_trans_int,x=fields_paxisZ,axis=1)
+                    AM_tot = np.max(AM_full_int)
+
+                    print(AM_full_int.shape)
+                    
+                    im = ax.plot(fields_t_range/l0, AM_full_int,label=self.scalar_names[i])
+        
+        ax.grid()
+        ax.legend(fontsize=14)
+        ax.set_xlabel("t/t0",fontsize=14)
+        
+        me = 9.1093837*10**-31
+        e = 1.60217663*10**-19
+        c = 299792458
+        eps0 = 8.854*10**-12
+        wr = 2*pi*c/1e-6
+        K = me*c**2
+        N = eps0*me*wr**2/e**2
+        L = c/wr
+        KNL3 = K*N*L**3
+
+        # print("LASER ENERGY:", Uelm*KNL3*1000,"mJ")
+
+        self.figure_0.suptitle(f"Scalar time plot \nUtot={Utot_tot*KNL3*1000:.2f} mJ; Uelm={Uelm_tot*KNL3*1000:.2f} mJ; Ukin={Ukin_tot*KNL3*1000:.2f} mJ; AM/U={AM_tot/Uelm_tot:.2f}",fontsize=14)
+        self.figure_0.tight_layout()
+        self.canvas_0.draw()
+        
+        
+        return
     def onUpdateTabFieldsFigure(self, fields_data_list):
 
         #=====================================
@@ -1144,11 +1398,13 @@ class MainWindow(QtWidgets.QMainWindow):
                 if combo_box_index==0:
                     print(len(self.fields_data_list))
                     ax = self.figure_1.add_subplot(Naxis,1,k+1)
-                    im = ax.imshow(self.fields_data_list[k][time_idx,:,self.fields_trans_mid_idx,:],cmap="RdBu", aspect="auto",extent=self.extentZX,origin='lower')
+                    im = ax.imshow(self.fields_data_list[k][time_idx,:,self.fields_trans_mid_idx,:],cmap="RdBu", aspect="auto",
+                                   extent=self.extentZX,origin='lower', interpolation="spline16")
                     ax.set_title(self.fields_names[i],rotation='vertical',x=-0.1,y=0.48)
                 else:
                     ax = self.figure_1.add_subplot(1,Naxis,k+1)
-                    im = ax.imshow(fields_data_list[k][time_idx,:,:,z_idx],cmap="RdBu", aspect="auto",extent=self.extentXY,origin='lower')
+                    im = ax.imshow(fields_data_list[k][time_idx,:,:,z_idx],cmap="RdBu", aspect="auto",
+                                   extent=self.extentXY,origin='lower', interpolation="spline16")
                     ax.set_title(self.fields_names[i])
                 im.autoscale()
                 self.figure_1.colorbar(im, ax=ax,pad=0.01)
@@ -1304,7 +1560,12 @@ class MainWindow(QtWidgets.QMainWindow):
             self.loop_in_process = False
         self.updateInfoLabelMem()
 
-
+    def onRemoveScalar(self):
+        if not self.INIT_tabScalar: #IF TAB OPEN AND SIM LOADED
+            del self.fields_image_list, self.fields_data_list,self.fields_paxisX,self.fields_paxisY,self.fields_paxisZ,
+            self.extentXY,self.extentZX,self.fields_t_range,self.fields_trans_mid_idx,self.fields_long_mid_idx
+            gc.collect()
+        self.updateInfoLabelMem()
 
     def onRemoveFields(self):
         if not self.INIT_tabFields: #IF TAB OPEN AND SIM LOADED
@@ -1455,15 +1716,16 @@ class MainWindow(QtWidgets.QMainWindow):
     def onUpdateTabPlasmaFigure(self, plasma_data_list):
         self.plasma_data_list = plasma_data_list
         l0=2*pi
-        check_list = [self.plasma_Bz_CHECK,self.plasma_Bz_trans_CHECK,self.plasma_ne_CHECK,self.plasma_ne_trans_CHECK]
+        check_list = [self.plasma_Bz_CHECK,self.plasma_Bz_trans_CHECK,self.plasma_ne_CHECK,self.plasma_ne_trans_CHECK, self.plasma_ptheta_CHECK, self.plasma_ptheta_trans_CHECK]
         boolList = [check.isChecked() for check in check_list]
+        print(boolList)
         Naxis = sum(boolList)
 
         if Naxis != len(self.plasma_data_list):
             # self.loading_LABEL.deleteLater()
             return
 
-        plasma_names =["Bz","Bz_trans","ne","ne_trans"]
+        plasma_names =["Bz","Bz_trans","ne","ne_trans","ptheta","ptheta_trans"]
         selected_plasma_names = np.array(plasma_names)[boolList]
 
         only_trans = sum(["trans" in name for name in selected_plasma_names]) == Naxis
@@ -1483,6 +1745,7 @@ class MainWindow(QtWidgets.QMainWindow):
         k=0
         for i in range(len(plasma_names)):
             if boolList[i]:
+                print(i,k,plasma_names[i])
                 if only_trans:
                     ax = self.figure_3.add_subplot(1,Naxis,k+1)
                 elif only_long:
@@ -1490,8 +1753,10 @@ class MainWindow(QtWidgets.QMainWindow):
                 elif Naxis <= 2:
                     ax = self.figure_3.add_subplot(1,Naxis,k+1)
                 else:
-                    ax = self.figure_3.add_subplot(2,2,i+1)
-
+                    ax = self.figure_3.add_subplot(2,2,k+1)
+                
+                vmax_ptheta = 0.005
+                
                 if plasma_names[i]=="Bz":
                     im = ax.imshow(self.plasma_data_list[k][time_idx]*self.toTesla,aspect="auto",cmap="RdYlBu",
                                     vmin=-VMAX_Bz,vmax=VMAX_Bz,extent=self.extentXZ_long)
@@ -1505,8 +1770,16 @@ class MainWindow(QtWidgets.QMainWindow):
                                     origin="lower", cmap = "jet",extent=self.extentXY, vmin=0, vmax=2) #bwr, RdYlBu
                     ax.set_title(f"{plasma_names[i]} ($z={self.plasma_paxisZ_Weight[z_idx]/l0:.1f}~\lambda$)")
                 if plasma_names[i]=="ne":
-                    im = ax.imshow(self.plasma_data_list[k][time_idx,:,:,0]/ne,aspect="auto",
+                    im = ax.imshow(self.plasma_data_list[k][time_idx,:,:]/ne,aspect="auto",
                                     origin="lower", cmap = "jet",extent=self.extentXZ_long, vmin=0, vmax=2) #bwr, RdYlBu
+                    ax.set_title(plasma_names[i])
+                if plasma_names[i]=="ptheta_trans":
+                    im = ax.imshow(self.plasma_data_list[k][time_idx,:,:,z_idx],aspect="auto",
+                                    origin="lower", cmap = "RdYlBu",extent=self.extentXY,vmin=-vmax_ptheta,vmax=vmax_ptheta) #bwr, RdYlBu
+                    ax.set_title(f"{plasma_names[i]} ($z={self.plasma_paxisZ_Weight[z_idx]/l0:.1f}~\lambda$)")
+                if plasma_names[i]=="ptheta":
+                    im = ax.imshow(self.plasma_data_list[k][time_idx,:,:],aspect="auto",
+                                    origin="lower", cmap = "RdYlBu",extent=self.extentXZ_long,vmin=-vmax_ptheta,vmax=vmax_ptheta) #bwr, RdYlBu
                     ax.set_title(plasma_names[i])
                 self.figure_3.colorbar(im, ax=ax,pad=0.01)
                 self.plasma_image_list.append(im)
@@ -1535,13 +1808,12 @@ class MainWindow(QtWidgets.QMainWindow):
             print("===== INIT FIELDS PLASMA =====")
             # self.displayLoadingLabel(self.plasma_groupBox)
 
-            Bz_long_diag = self.S.Probe(1,"Bz")
+            Bz_long_diag = self.S.Probe(2,"Bz")
             self.plasma_paxisX_long = Bz_long_diag.getAxis("axis1")[:,0]
             self.plasma_paxisZ_long = Bz_long_diag.getAxis("axis2")[:,2]
             self.plasma_t_range = Bz_long_diag.getTimes()
-            print("LEN OF TIME:",len(self.plasma_t_range))
 
-            Bz_trans_diag = self.S.Probe(2,"Bz")
+            Bz_trans_diag = self.S.Probe(1,"Bz")
             self.plasma_paxisX = Bz_trans_diag.getAxis("axis1")[:,0]
             self.plasma_paxisY = Bz_trans_diag.getAxis("axis2")[:,1]
             self.plasma_paxisZ_Bz = Bz_trans_diag.getAxis("axis3")[:,2]
@@ -1559,10 +1831,10 @@ class MainWindow(QtWidgets.QMainWindow):
             self.plasma_time_SLIDER.setMaximum(len(self.plasma_t_range)-1)
             self.plasma_zcut_SLIDER.setMaximum(len(self.plasma_paxisZ_Bz)-1)
             self.plasma_time_SLIDER.setValue(len(self.plasma_t_range)-1)
-            self.plasma_zcut_SLIDER.setValue(len(self.plasma_paxisZ_Bz)-2)
+            self.plasma_zcut_SLIDER.setValue(len(self.plasma_paxisZ_Bz)-3)
 
             self.plasma_time_EDIT.setText(str(round(self.plasma_t_range[-1]/l0,2)))
-            self.plasma_zcut_EDIT.setText(str(round(self.plasma_paxisZ_Bz[-1]/l0,2)))
+            self.plasma_zcut_EDIT.setText(str(round(self.plasma_paxisZ_Bz[-3]/l0,2)))
 
             self.plasma_image_list = []
             self.plasma_data_list = []
@@ -1576,8 +1848,9 @@ class MainWindow(QtWidgets.QMainWindow):
         ne = self.S.namelist.ne
         l0 = 2*pi
         if check_id < 10: #CHECK_BOX UPDATE
-
-            check_list = [self.plasma_Bz_CHECK,self.plasma_Bz_trans_CHECK,self.plasma_ne_CHECK,self.plasma_ne_trans_CHECK]
+            
+            plasma_names =["Bz","Bz_trans","ne","ne_trans","ptheta","ptheta_trans"]
+            check_list = [self.plasma_Bz_CHECK,self.plasma_Bz_trans_CHECK,self.plasma_ne_CHECK,self.plasma_ne_trans_CHECK, self.plasma_ptheta_CHECK, self.plasma_ptheta_trans_CHECK]
             boolList = [check.isChecked() for check in check_list]
 
             if sum(boolList)>4:
@@ -1589,7 +1862,6 @@ class MainWindow(QtWidgets.QMainWindow):
             Naxis = min(sum(boolList),4)
             VMAX_Bz = 0.001*self.toTesla*self.a0*ne/0.01 #1 = 10709T
 
-            plasma_names =["Bz","Bz_trans","ne","ne_trans"]
 
             #=====================================
             # REMOVE ALL FIGURES --> NOT OPTIMAL
@@ -1634,9 +1906,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
             for i,im in enumerate(self.plasma_image_list):
 
-                check_list = [self.plasma_Bz_CHECK,self.plasma_Bz_trans_CHECK,self.plasma_ne_CHECK,self.plasma_ne_trans_CHECK]
+                check_list = [self.plasma_Bz_CHECK,self.plasma_Bz_trans_CHECK,self.plasma_ne_CHECK,self.plasma_ne_trans_CHECK, self.plasma_ptheta_CHECK, self.plasma_ptheta_trans_CHECK]
                 boolList = [check.isChecked() for check in check_list]
-                plasma_names =["Bz","Bz_trans","ne","ne_trans"]
+                plasma_names =["Bz","Bz_trans","ne","ne_trans","ptheta","ptheta_trans"]
                 selected_plasma_names = np.array(plasma_names)[boolList]
 
                 if selected_plasma_names[i] == "Bz":
@@ -1647,10 +1919,16 @@ class MainWindow(QtWidgets.QMainWindow):
                     self.figure_3.axes[i*2].set_title(f"{selected_plasma_names[i]} ($z={self.plasma_paxisZ_Bz[zcut_idx]/l0:.1f}~\lambda$)")
                     # max_value = np.max(np.abs(self.plasma_data_list[i][time_idx,:,:,zcut_idx]))
                 if selected_plasma_names[i] == "ne":
-                    im.set_data(self.plasma_data_list[i][time_idx,:,:,0]/ne)
+                    im.set_data(self.plasma_data_list[i][time_idx,:,:]/ne)
                     # max_value = np.max(np.abs(self.plasma_data_list[i][time_idx,:,:,0]))
                 if selected_plasma_names[i] == "ne_trans":
                     im.set_data(self.plasma_data_list[i][time_idx,:,:,zcut_idx]/ne)
+                    self.figure_3.axes[i*2].set_title(f"{selected_plasma_names[i]} ($z={self.plasma_paxisZ_Weight[zcut_idx]/l0:.1f}~\lambda$)")
+                if selected_plasma_names[i] == "ptheta":
+                    im.set_data(self.plasma_data_list[i][time_idx,:,:])
+                    # max_value = np.max(np.abs(self.plasma_data_list[i][time_idx,:,:,0]))
+                if selected_plasma_names[i] == "ptheta_trans":
+                    im.set_data(self.plasma_data_list[i][time_idx,:,:,zcut_idx])
                     self.figure_3.axes[i*2].set_title(f"{selected_plasma_names[i]} ($z={self.plasma_paxisZ_Weight[zcut_idx]/l0:.1f}~\lambda$)")
                     # max_value = np.max(np.abs(self.plasma_data_list[i][time_idx,:,:,zcut_idx]))
 
@@ -1668,9 +1946,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
                 for i,im in enumerate(self.plasma_image_list):
 
-                    check_list = [self.plasma_Bz_CHECK,self.plasma_Bz_trans_CHECK,self.plasma_ne_CHECK,self.plasma_ne_trans_CHECK]
+                    check_list = [self.plasma_Bz_CHECK,self.plasma_Bz_trans_CHECK,self.plasma_ne_CHECK,self.plasma_ne_trans_CHECK, self.plasma_ptheta_CHECK, self.plasma_ptheta_trans_CHECK]
                     boolList = [check.isChecked() for check in check_list]
-                    plasma_names =["Bz","Bz_trans","ne","ne_trans"]
+                    plasma_names =["Bz","Bz_trans","ne","ne_trans","ptheta","ptheta_trans"]
                     selected_plasma_names = np.array(plasma_names)[boolList]
 
                     if selected_plasma_names[i] == "Bz":
@@ -1679,11 +1957,16 @@ class MainWindow(QtWidgets.QMainWindow):
                         im.set_data(self.plasma_data_list[i][time_idx,:,:,zcut_idx]*self.toTesla)
                         self.figure_3.axes[i*2].set_title(f"{selected_plasma_names[i]} ($z={self.plasma_paxisZ_Bz[zcut_idx]/l0:.1f}~\lambda$)")
                     if selected_plasma_names[i] == "ne":
-                        im.set_data(self.plasma_data_list[i][time_idx,:,:,0]/ne)
+                        im.set_data(self.plasma_data_list[i][time_idx,:,:]/ne)
                     if selected_plasma_names[i] == "ne_trans":
                         im.set_data(self.plasma_data_list[i][time_idx,:,:,zcut_idx]/ne)
                         self.figure_3.axes[i*2].set_title(f"{selected_plasma_names[i]} ($z={self.plasma_paxisZ_Weight[zcut_idx]/l0:.1f}~\lambda$)")
-
+                    if selected_plasma_names[i] == "ptheta":
+                        im.set_data(self.plasma_data_list[i][time_idx,:,:])
+                        # max_value = np.max(np.abs(self.plasma_data_list[i][time_idx,:,:,0]))
+                    if selected_plasma_names[i] == "ptheta_trans":
+                        im.set_data(self.plasma_data_list[i][time_idx,:,:,zcut_idx])
+                        self.figure_3.axes[i*2].set_title(f"{selected_plasma_names[i]} ($z={self.plasma_paxisZ_Weight[zcut_idx]/l0:.1f}~\lambda$)")
                 self.figure_3.suptitle(f"t={self.plasma_t_range[time_idx]/self.l0:.2f}$~t_0$")
                 self.canvas_3.draw()
                 time.sleep(0.05)
@@ -1723,16 +2006,18 @@ class MainWindow(QtWidgets.QMainWindow):
         #================================
         # CHECK FOR FINISHED SIMULATIONS
         #================================
-        if CURRENT_NB_SIM_RUNNING < OLD_NB_SIM_RUNNING: #AT LEAST ONE SIMULATION HAS FINISHED
+        if (CURRENT_NB_SIM_RUNNING <= OLD_NB_SIM_RUNNING) and (list(self.sim_dict) != list(self.running_sim_hist)): #AT LEAST ONE SIMULATION HAS FINISHED
             for n,old_sim_id_int in enumerate(self.running_sim_hist):
                 if str(old_sim_id_int) not in list(self.sim_dict): #this simulation has finished
+                    print(self.previous_sim_dict)
                     finished_sim_path = self.previous_sim_dict[str(old_sim_id_int)]["job_full_path"]
-                    print(finished_sim_path,"is download is available !")
-
+                    finished_sim_name = self.previous_sim_dict[str(old_sim_id_int)]["job_full_name"]
+                    print(finished_sim_path,"is download is available ! \a") #\a
+                    self.showToast('Tornado download is available', finished_sim_name)
 
                     self.finished_sim_hist.append(old_sim_id_int)
                     self.running_sim_hist.remove(old_sim_id_int)
-                    self.can_doawnload_sim_dict[int(old_sim_id_int)] = finished_sim_path
+                    self.can_download_sim_dict[int(old_sim_id_int)] = finished_sim_path
 
                     layout = self.layout_progress_bar_dict[str(old_sim_id_int)]
                     progress_bar = layout.itemAt(2).widget()
@@ -1753,8 +2038,6 @@ class MainWindow(QtWidgets.QMainWindow):
                     close_BUTTON.setStyleSheet("border-radius:0px; border:0px")
                     close_BUTTON.clicked.connect(lambda: self.onCloseProgressBar(old_sim_id_int))
                     layout.addWidget(close_BUTTON)
-
-
 
         #================================
         # CHECK FOR NEW SIMULATIONS
@@ -1802,13 +2085,30 @@ class MainWindow(QtWidgets.QMainWindow):
         self.loadthread = ThreadDownloadSimJSON("/sps3/jeremy/LULI/simulation_info.json", os.environ["SMILEI_QT"])
         self.loadthread.finished.connect(self.async_onUpdateTabTornado)
         self.loadthread.start()
+        
+    def call_ThreadDownloadSimData(self):
+        self.loadthread = ThreadDownloadSimJSON(sim_id)
+        self.loadthread.finished.connect(lambda:self.onDownloadSimDataFinished(sim_id))
+        self.loadthread.start()
+        
+    def onDownloadSimDataFinished(self,sim_id):
+        layout = self.layout_progress_bar_dict[str(sim_id)]
+        progress_bar = layout.itemAt(2).widget()
+        ETA_LABEL = layout.itemAt(3).widget()
+        dl_sim_BUTTON = layout.itemAt(4).widget()
+        
+        dl_sim_BUTTON.setStyleSheet("border-color: green")
+        dl_sim_BUTTON.setEnabled(False)
+        progress_bar.setStyleSheet(self.qss_progressBar_DOWNLOADED)  
+        
+        
 
     def onInitTabTornado(self):
         if self.INIT_tabTornado == None: return
         if self.INIT_tabTornado:
 
             self.tornado_update_TIMER = QtCore.QTimer()
-            refresh_time_min = 15 #minute
+            refresh_time_min = 10 #minute
             self.tornado_update_TIMER.setInterval(int(refresh_time_min*60*1000)) #in ms
             # self.tornado_update_TIMER.timeout.connect(self.async_onUpdateTabTornado)
             self.tornado_update_TIMER.timeout.connect(self.call_ThreadDownloadSimJSON)
@@ -1825,7 +2125,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.running_sim_hist = []
             self.finished_sim_hist = []
             self.layout_progress_bar_dict = {}
-            self.can_doawnload_sim_dict = {}
+            self.can_download_sim_dict = {}
 
             for sim_id in self.sim_dict:
                 if sim_id == "datetime": continue #only open sim data and not metadata (located at the end of dict)
@@ -1859,11 +2159,11 @@ class MainWindow(QtWidgets.QMainWindow):
         tornado_PROGRESS_BAR.setFont(QFont('Arial', 15))
         tornado_PROGRESS_BAR.setAlignment(QtCore.Qt.AlignCenter)
 
-        custom_FONT = QtGui.QFont("Courier New", 15,QFont.Bold)
+        custom_FONT = QtGui.QFont("Courier New", 14,QFont.Bold)
 
-        sim_name_LABEL = QtWidgets.QLabel(sim_name)
+        sim_name_LABEL = QtWidgets.QLabel(f"[{sim_id}] {sim_name}")
         sim_name_LABEL.setFont(custom_FONT)
-        sim_name_LABEL.setMinimumWidth(450)
+        sim_name_LABEL.setMinimumWidth(650) #450 FOR LAPTOP
         sim_name_LABEL.setStyleSheet("background-color: lightblue")
         sim_name_LABEL.setWordWrap(True)
         sim_name_LABEL.setAlignment(QtCore.Qt.AlignCenter)
@@ -1914,13 +2214,28 @@ class MainWindow(QtWidgets.QMainWindow):
         print("===========================")
         print("downloading request for", sim_id)
 
-        job_full_path = self.can_doawnload_sim_dict[str(sim_id)]["job_full_path"]
+        job_full_path = self.can_download_sim_dict[int(sim_id)]
         print(job_full_path)
         self.loadthread = ThreadDownloadSimData(job_full_path)
         self.loadthread.start()
         # self.downloadSimData(job_full_path) #"_NEW_PLASMA_/new_plasma_LG_optic_ne0.01_dx12/")
 
+    def showToast(self,msg1,msg2=None):
+        toast = Toast(self)
+        toast.setDuration(5000)  # Hide after 5 seconds
+        toast.setTitle(msg1)
+        toast.setText(msg2)
+        toast.applyPreset(ToastPreset.SUCCESS)  # Apply style preset
+        toast.show()
+    
 
+    def printSI(self,x,baseunit,ndeci=2):
+        prefix="yzafpnµm kMGTPEZY"
+        shift=decimal.Decimal('1E24')
+        d=(decimal.Decimal(str(x))*shift).normalize()
+        m,e=d.to_eng_string().split('E')    
+        return m[:4] + " " + prefix[int(e)//3] + baseunit
+    
 class ProxyStyle(QtWidgets.QProxyStyle):
     """Overwrite the QSlider: left click place the cursor at cursor position"""
     def styleHint(self, hint, opt=None, widget=None, returnData=None):
