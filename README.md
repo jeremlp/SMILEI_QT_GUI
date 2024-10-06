@@ -1,4 +1,4 @@
-# SMILEI_QT_GUI V0.5.2
+# SMILEI_QT_GUI V0.7.3
 Graphical User Interface for Smilei PIC code analysis.
 
 
@@ -7,6 +7,10 @@ Graphical User Interface for Smilei PIC code analysis.
 - TrackParticles diagnostic tab: AM radial and transverse distribution
 - Plasma diagnostic tab: Bz and ne longitudinal and transverse distribution
 - Tornado SSH & SCP pooling: list of running and finished simulations with progress bar and estimated completion time. Download all simulations data directly from the app
+
+### Comparison between simulations
+
+Can compare Scalar and Plasma diagnostics between 2 simulations
 
 ### Efficient memory management
 
