@@ -166,12 +166,22 @@ class MainWindow(QtWidgets.QMainWindow):
             background: #dfdfdf;
             }
         """
-
+        
+        self.qss_checkBox = """
+        QCheckBox {
+        font: 12pt "MS Shell Dlg 2";
+            }
+        """
+        self.qss_radioButton = """
+        QRadioButton {
+        font: 12pt "MS Shell Dlg 2";
+            }
+        """
         self.theme = "light"
         if self.theme == "dark":
-            self.qss = self.dark_qss_groupBox + self.dark_qss_tab + self.dark_qss_label + self.qss_button + self.qss_progressBar
+            self.qss = self.dark_qss_groupBox + self.dark_qss_tab + self.dark_qss_label + self.qss_button + self.qss_progressBar + self.qss_checkBox
         else:
-            self.qss = self.light_qss_groupBox + self.light_qss_tab + self.light_qss_label + self.qss_button + self.qss_progressBar
+            self.qss = self.light_qss_groupBox + self.light_qss_tab + self.light_qss_label + self.qss_button + self.qss_progressBar + self.qss_checkBox
 
         qdarktheme.setup_theme(self.theme,additional_qss=self.qss)
         self.setGeometry(175,125,window_width,window_height)
@@ -410,10 +420,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.scalar_names = ["Utot","Uelm", "Ukin","AM", "Uelm/Utot"]
         layoutTabSettingsCheck = QtWidgets.QHBoxLayout()
         for name in self.scalar_names:
-            check = QtWidgets.QCheckBox()
+            check = QtWidgets.QCheckBox(name)
             self.scalar_check_list.append(check)
-            layoutScalarCheck = self.creatPara(f"{name} ", check,adjust_label=True,fontsize=fontsize)
-            layoutTabSettingsCheck.addLayout(layoutScalarCheck)
+            # layoutScalarCheck = self.creatPara(f"{name} ", check,adjust_label=True,fontsize=fontsize)
+            # layoutTabSettingsCheck.addLayout(layoutScalarCheck)
+            layoutTabSettingsCheck.addWidget(check)
 
         self.scalar_check_list[0].setChecked(True)
 
@@ -447,16 +458,17 @@ class MainWindow(QtWidgets.QMainWindow):
         self.fields_names =["Ex","Ey","Ez","Bx","By","Bz","Er","Eθ","Br","Bθ"]
         self.fields_check_list = []
         for i, name in enumerate(self.fields_names):
-            fields_CHECK = QtWidgets.QCheckBox()
+            fields_CHECK = QtWidgets.QCheckBox(name)
             self.fields_check_list.append(fields_CHECK)
-            layoutFieldsCheck = self.creatPara(name + " ", fields_CHECK,adjust_label=True,fontsize=12)
-            layoutFieldsCheck.setSpacing(0)
+            # layoutFieldsCheck = self.creatPara(name + " ", fields_CHECK,adjust_label=True,fontsize=12)
+            # layoutFieldsCheck.setSpacing(0)
             if i in [3,6,8]:
                 separator1 = QtWidgets.QFrame()
                 separator1.setFrameShape(QtWidgets.QFrame.VLine)
                 separator1.setLineWidth(1)
                 layoutTabSettingsCheck.addWidget(separator1)
-            layoutTabSettingsCheck.addLayout(layoutFieldsCheck)
+            # layoutTabSettingsCheck.addLayout(layoutFieldsCheck)
+            layoutTabSettingsCheck.addWidget(fields_CHECK)
 
         self.fields_check_list[0].setChecked(True)
         # self.Ey_CHECK.setChecked(True)
@@ -575,16 +587,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.plasma_names = ["Bx","Bx_trans","ne","ne_trans","Lx","Lx_trans","pθ","pθ_trans", "Jθ", "Jθ_trans"]
         self.plasma_check_list = []
         for i, name in enumerate(self.plasma_names):
-            plasma_CHECK = QtWidgets.QCheckBox()
+            plasma_CHECK = QtWidgets.QCheckBox(name)
             self.plasma_check_list.append(plasma_CHECK)
-            layoutPlasmaCheck = self.creatPara(name + " ", plasma_CHECK,adjust_label=True,fontsize=12)
-            layoutPlasmaCheck.setSpacing(0)
+            # layoutPlasmaCheck = self.creatPara(name + " ", plasma_CHECK,adjust_label=True,fontsize=12)
+            # layoutPlasmaCheck.setSpacing(0)
             if i%2==0 and i>0:
                 separator1 = QtWidgets.QFrame()
                 separator1.setFrameShape(QtWidgets.QFrame.VLine)
                 separator1.setLineWidth(1)
                 layoutTabSettingsCheck.addWidget(separator1)
-            layoutTabSettingsCheck.addLayout(layoutPlasmaCheck)
+            layoutTabSettingsCheck.addWidget(plasma_CHECK)
 
         layoutTabSettingsCheck.setSpacing(20)
         layoutTabSettingsCheck.setContentsMargins(0, 0, 0, 0)
@@ -652,6 +664,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ax4_plasma1 = self.figure_4_plasma.add_subplot(1,2,1)
         self.ax4_plasma2 = self.figure_4_plasma.add_subplot(1,2,2)
         self.figure_4_scalar.tight_layout()
+        
 
         #-------------- MAIN Groupbox -----------------
         self.compa_load_sim_BUTTON = QtWidgets.QPushButton('Open Comparison')
@@ -682,10 +695,11 @@ class MainWindow(QtWidgets.QMainWindow):
         layoutCompaTabSettingsCheck = QtWidgets.QHBoxLayout()
         self.compa_scalar_check_list = []
         for name in self.scalar_names:
-            check = QtWidgets.QCheckBox()
-            self.compa_scalar_check_list.append(check)
-            layoutScalarCheck = self.creatPara(f"{name} ", check,adjust_label=True,fontsize=fontsize)
-            layoutCompaTabSettingsCheck.addLayout(layoutScalarCheck)
+            compa_scalar_CHECK = QtWidgets.QCheckBox(name)
+            self.compa_scalar_check_list.append(compa_scalar_CHECK)
+            # layoutScalarCheck = self.creatPara(f"{name} ", check,adjust_label=True,fontsize=fontsize)
+            # layoutCompaTabSettingsCheck.addLayout(layoutScalarCheck)
+            layoutCompaTabSettingsCheck.addWidget(compa_scalar_CHECK)
 
 
         layoutTabSettingsCompaScalar = QtWidgets.QVBoxLayout()
@@ -698,11 +712,17 @@ class MainWindow(QtWidgets.QMainWindow):
         #-------------- PLASMA Groupbox -----------------
         layoutCompaTabSettingsCheck = QtWidgets.QHBoxLayout()
         self.compa_plasma_check_list = []
-        for name in self.plasma_names:
-            check = QtWidgets.QCheckBox()
-            self.compa_plasma_check_list.append(check)
-            layoutPlasmaCheck = self.creatPara(f"{name} ", check,adjust_label=True,fontsize=fontsize)
-            layoutCompaTabSettingsCheck.addLayout(layoutPlasmaCheck)
+        for i,name in enumerate(self.plasma_names):
+            compa_plasma_CHECK = QtWidgets.QCheckBox(name)
+            compa_plasma_RADIO = QtWidgets.QRadioButton(name)
+            self.compa_plasma_check_list.append(compa_plasma_RADIO)
+
+            if i%2==0 and i>0:
+                separator1 = QtWidgets.QFrame()
+                separator1.setFrameShape(QtWidgets.QFrame.VLine)
+                separator1.setLineWidth(1)
+                layoutCompaTabSettingsCheck.addWidget(separator1)
+            layoutCompaTabSettingsCheck.addWidget(compa_plasma_RADIO)
 
 
         self.compa_plasma_time_SLIDER = QtWidgets.QSlider(QtCore.Qt.Horizontal)
@@ -737,8 +757,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.layoutCompa = QtWidgets.QVBoxLayout()
         self.layoutCompa.addWidget(self.compa_groupBox)
-        self.layoutCompa.addWidget(self.compa_scalar_groupBox)
-        self.layoutCompa.addWidget(self.canvas_4_scalar)
+        # self.layoutCompa.addWidget(self.compa_scalar_groupBox)
+        # self.layoutCompa.addWidget(self.canvas_4_scalar)
         self.layoutCompa.addWidget(self.compa_plasma_groupBox)
         self.layoutCompa.addWidget(self.canvas_4_plasma)
 
@@ -808,7 +828,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.compa_load_sim_BUTTON.clicked.connect(self.onOpenCompaSim)
 
         for i in range(len(self.scalar_check_list)):
-            self.scalar_check_list[i].clicked.connect(partial(self.onUpdateTabScalar,i,False))
+            self.scalar_check_list[i].clicked.connect(partial(self.onUpdateTabScalar,i,is_compa=False))
 
         for i in range(len(self.fields_check_list)):
             self.fields_check_list[i].clicked.connect(partial(self.onUpdateTabFields,i))
@@ -842,8 +862,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.plasma_xcut_EDIT.returnPressed.connect(lambda: self.onUpdateTabPlasma(201))
         self.plasma_play_time_BUTTON.clicked.connect(lambda: self.onUpdateTabPlasma(1000))
 
-        for i in range(len(self.scalar_check_list)):
-            self.compa_scalar_check_list[i].clicked.connect(partial(self.onUpdateTabScalar,i,True))
+        # for i in range(len(self.scalar_check_list)):
+        #     self.compa_scalar_check_list[i].clicked.connect(partial(self.onUpdateTabScalar,i,True))
 
         for i in range(len(self.compa_plasma_check_list)):
             self.compa_plasma_check_list[i].clicked.connect(partial(self.onUpdateTabCompaPlasma,i))
@@ -1041,6 +1061,7 @@ class MainWindow(QtWidgets.QMainWindow):
         e = 1.60217663*10**-19
         c = 299792458
         eps0 = 8.854*10**-12
+        self.toTesla = 10709
         self.wr = 2*pi*c/1e-6
         self.ne_SI = self.ne*eps0*me/e**2*self.wr**2
         self.wp = np.sqrt(self.ne)*self.wr
@@ -1108,10 +1129,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.compa_sim_directory_name = path_list[-1]
         self.compa_sim_directory_parent = path_list[-2]
         self.compa_sim_directory_name_LABEL.setText(self.compa_sim_directory_parent+"/"+ self.compa_sim_directory_name)
-        compa_S = happi.Open(path)
+        self.compa_S = happi.Open(path)
 
 
-        if compa_S.valid:
+        if self.compa_S.valid:
             self.compa_load_sim_status = "Loaded"
             self.compa_load_status_LABEL.setStyleSheet("color: green")
             self.is_compa_sim_loaded = True
@@ -1121,9 +1142,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.is_compa_sim_loaded = False
         self.compa_load_status_LABEL.setText(self.compa_load_sim_status)
         return
-
-
-
+    """
     def displayLoadingLabel(self, widget_to_cover):
         self.loading_LABEL = QtWidgets.QLabel("LOADING...",widget_to_cover)
         self.loading_LABEL.setScaledContents(True)
@@ -1139,7 +1158,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.loading_LABEL.raise_()
         self.loading_LABEL.show()
         app.processEvents()
-
+    """
     def onCloseTab(self, currentIndex):
           tab_name = self.programm_TABS.tabText(currentIndex)
           self.programm_TABS.removeTab(currentIndex)
@@ -1260,7 +1279,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def onUpdateTabScalar_AM(self, AM_full_int, is_compa=False):
         print(AM_full_int.shape, is_compa)
         if not is_compa:
-            canvas = self.canvas_0_scalar
+            canvas = self.canvas_0
         else: canvas = self.canvas_4_scalar
 
         fields_t_range = self.S.Probe(0,"Ex").getTimes()
@@ -1293,6 +1312,7 @@ class MainWindow(QtWidgets.QMainWindow):
         return
 
     def onUpdateTabScalar(self, check_id, is_compa=False):
+        # print("onUpdateTabScalar",check_id, is_compa)
         if self.INIT_tabScalar == None or self.is_sim_loaded == False: return
         self.INIT_tabScalar = False
 
@@ -1343,7 +1363,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 try:
                     data_file_AM = np.loadtxt(f"{self.sim_directory_path}/data_AM.npy")
                     data_t_range, AM_data = data_file_AM[:,0], data_file_AM[:,1]
-                    self.onUpdateTabScalar_AM(AM_data,is_compa)
+                    self.onUpdateTabScalar_AM(AM_data,is_compa=is_compa)
                 except FileNotFoundError:
                     print("USE EXPENSIVE AM COMPUTATION")
                     self.call_ThreadGetAMIntegral(is_compa)
@@ -1435,6 +1455,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
     def onUpdateTabFields(self,check_id):
+        boolList = [check.isChecked() for check in self.fields_check_list]
+        if sum(boolList)>3:
+            print("TOO MANY CHECK FOR FIELDS",check_id)
+            self.fields_check_list[check_id].setChecked(False)
+            boolList[check_id] = False
+            app.processEvents()
+            return
         if self.INIT_tabFields == None or self.is_sim_loaded == False: return
         if self.INIT_tabFields:
             print("===== INIT FIELDS TAB =====")
@@ -1478,18 +1505,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
         l0 = 2*pi
         if check_id < 10: #CHECK_BOX UPDATE
-            # self.displayLoadingLabel(self.fields_groupBox)
-            # print("BOX UPDATE < 10")
-
-            # check_list = self.fields_check_list [self.Ex_CHECK,self.Ey_CHECK,self.Ez_CHECK,self.Bx_CHECK,self.By_CHECK,self.Bz_CHECK,
-            #               self.Er_CHECK,self.Etheta_CHECK,self.Br_CHECK,self.Btheta_CHECK]
-            boolList = [check.isChecked() for check in self.fields_check_list]
-
-            if sum(boolList)>3:
-                self.fields_check_list[check_id].setChecked(False)
-                boolList[check_id] = False
-                # self.loading_LABEL.deleteLater()
-                return
 
             combo_box_index = self.sim_cut_direction_BOX.currentIndex()
 
@@ -1792,10 +1807,10 @@ class MainWindow(QtWidgets.QMainWindow):
                     vmax =  0.1*np.max(np.abs(self.plasma_data_list[k][time_idx]))
 
                 if "trans" in self.plasma_names[i]:
-                    extent = self.extentYZ
+                    extent = self.plasma_extentYZ
                     data = self.plasma_data_list[k][time_idx,x_idx,:,:]
                 else:
-                    extent = self.extentXY_long
+                    extent = self.plasma_extentXY_long 
                     data = self.plasma_data_list[k][time_idx].T
 
                 im = ax.imshow(data, aspect="auto",
@@ -1814,9 +1829,18 @@ class MainWindow(QtWidgets.QMainWindow):
         # self.loading_LABEL.deleteLater()
 
     def onUpdateTabPlasma(self, check_id):
+        boolList = [check.isChecked() for check in self.plasma_check_list]
+        if sum(boolList)>4:
+            print("TOO MANY CHECK FOR PLASMA",check_id)
+            self.plasma_check_list[check_id].setChecked(False)
+            boolList[check_id] = False
+            app.processEvents()
+            return
+        
         if self.INIT_tabPlasma == None or self.is_sim_loaded == False: return
         if self.INIT_tabPlasma:
             l0 = 2*pi
+            
 
             plasma_species_exist = "eon" in [s.name for s in self.S.namelist.Species]
             if not plasma_species_exist:
@@ -1828,7 +1852,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 return
 
             print("===== INIT FIELDS PLASMA =====")
-
+            
             Bx_long_diag = self.S.Probe(2,"Bx")
             self.plasma_paxisX_long = Bx_long_diag.getAxis("axis1")[:,0]
             self.plasma_paxisY_long = Bx_long_diag.getAxis("axis2")[:,1]
@@ -1837,17 +1861,17 @@ class MainWindow(QtWidgets.QMainWindow):
             Bx_trans_diag = self.S.Probe(1,"Bx")
             self.plasma_paxisY = Bx_trans_diag.getAxis("axis2")[:,1]
             self.plasma_paxisZ = Bx_trans_diag.getAxis("axis3")[:,2]
-            self.plasma_paxisX_Bx = Bx_trans_diag.getAxis("axis1")[:,0]
+            self.plasma_paxisX_Bx = Bx_trans_diag.getAxis("axis1")[:,0]           
 
+            self.plasma_extentXY_long = [self.plasma_paxisX_long[0]/l0,self.plasma_paxisX_long[-1]/l0,
+                                  self.plasma_paxisY_long[0]/l0-self.Ltrans/l0/2,self.plasma_paxisY_long[-1]/l0-self.Ltrans/l0/2]
+            self.plasma_extentYZ = [self.plasma_paxisY[0]/l0-self.Ltrans/l0/2,self.plasma_paxisY[-1]/l0-self.Ltrans/l0/2,
+                             self.plasma_paxisZ[0]/l0-self.Ltrans/l0/2,self.plasma_paxisZ[-1]/l0-self.Ltrans/l0/2]
+            
             Bweight_XY = self.S.ParticleBinning("weight_trans")
             self.plasma_paxisX_Weight = Bweight_XY.getAxis("x")
-            self.toTesla = 10709
-
-            self.extentXY_long = [self.plasma_paxisX_long[0]/l0,self.plasma_paxisX_long[-1]/l0,
-                                  self.plasma_paxisY_long[0]/l0-self.Ltrans/l0/2,self.plasma_paxisY_long[-1]/l0-self.Ltrans/l0/2]
-            self.extentYZ = [self.plasma_paxisY[0]/l0-self.Ltrans/l0/2,self.plasma_paxisY[-1]/l0-self.Ltrans/l0/2,
-                             self.plasma_paxisZ[0]/l0-self.Ltrans/l0/2,self.plasma_paxisZ[-1]/l0-self.Ltrans/l0/2]
-
+            
+            
             self.plasma_time_SLIDER.setMaximum(len(self.plasma_t_range)-1)
             self.plasma_xcut_SLIDER.setMaximum(len(self.plasma_paxisX_Bx)-1)
             self.plasma_time_SLIDER.setValue(len(self.plasma_t_range)-1)
@@ -1862,19 +1886,10 @@ class MainWindow(QtWidgets.QMainWindow):
             app.processEvents()
             self.updateInfoLabelMem()
 
-            self.savePlasmaData() # Save all data to .npz file for later comparison
+            # self.savePlasmaData() # Save all data to .npz file for later comparison
 
         l0 = 2*pi
         if check_id < 10: #CHECK_BOX UPDATE
-
-            boolList = [check.isChecked() for check in self.plasma_check_list]
-
-            if sum(boolList)>4:
-                print("TOO MANY CHECK FOR PLASMA",check_id)
-                self.plasma_check_list[check_id].setChecked(False)
-                boolList[check_id] = False
-                app.processEvents()
-                return
             #=====================================
             # REMOVE ALL FIGURES --> NOT OPTIMAL
             #=====================================
@@ -1952,14 +1967,138 @@ class MainWindow(QtWidgets.QMainWindow):
             self.loop_in_process = False
 
 
-    def onUpdateTabCompaPlasma(self,check_id):
+    def call_compa_ThreadGetPlasmaProbeData(self, check_id):
+        if not self.is_sim_loaded: return
+        boolList = [check.isChecked() for check in self.compa_plasma_check_list]
 
+        selected_compa_plasma_names = np.array(self.plasma_names)[boolList]
+       
+        self.loadthread = class_threading.ThreadGetPlasmaProbeData(self.S, selected_compa_plasma_names)
+        self.loadthread.finished.connect(partial(self.onUpdateTabCompaPlasmaFigure, is_compa=False))
+        if self.is_compa_sim_loaded: self.loadthread.finished.connect(partial(self.call_compa2_ThreadGetPlasmaProbeData, check_id))
+        self.loadthread.start()
+        return
+    
+    def call_compa2_ThreadGetPlasmaProbeData(self, check_id):
+        boolList = [check.isChecked() for check in self.compa_plasma_check_list]
+        selected_compa_plasma_names = np.array(self.plasma_names)[boolList]
+        self.loadthread = class_threading.ThreadGetPlasmaProbeData(self.compa_S, selected_compa_plasma_names)
+        self.loadthread.finished.connect(partial(self.onUpdateTabCompaPlasmaFigure, is_compa=True))
+        self.loadthread.start()
 
+    def onUpdateTabCompaPlasmaFigure(self, plasma_data_list_used_selected_plasma_names, is_compa=False):
+        compa_plasma_data_list, used_selected_plasma_names = plasma_data_list_used_selected_plasma_names
+        boolList = [check.isChecked() for check in self.compa_plasma_check_list]
+        selected_plasma_names = np.array(self.plasma_names)[boolList]
 
-        self.ax4_plasma1.imshow(np.random.random(200,200))
-        self.ax4_plasma2.imshow(np.random.random(200,200))
+        print(selected_plasma_names,used_selected_plasma_names)
+        if not np.array_equal(selected_plasma_names, used_selected_plasma_names):
+            print("compa plasma get data list DISCARDED")
+            return
+        
+        self.compa_plasma_data = compa_plasma_data_list[0]
+        self.selected_plasma_name = selected_plasma_names[0] #Only 1 requested element for compa
+
+        ne = self.S.namelist.ne
+        VMAX_Bx = 0.001*self.toTesla*self.a0*ne/0.01 #1 = 10709T
+        vmax_ptheta = 0.005
+        
+        
+        # if not self.is_compa_sim_loaded: return
+        time_idx = self.compa_plasma_time_SLIDER.value()
+        x_idx = self.compa_plasma_xcut_SLIDER.value()
+        
+        if "Bx" in self.selected_plasma_name:
+            cmap = "RdYlBu"
+            vmin = -VMAX_Bx
+            vmax =  VMAX_Bx
+        elif "pθ" in self.selected_plasma_name:
+            cmap = "RdYlBu"
+            vmin = -vmax_ptheta
+            vmax =  vmax_ptheta
+        elif "ne" in self.selected_plasma_name:
+            cmap = "jet"
+            vmin = 0
+            vmax = 2
+        else:
+            cmap = "RdYlBu"
+            vmin = -0.1*np.max(np.abs(self.compa_plasma_data[time_idx]))
+            vmax =  0.1*np.max(np.abs(self.compa_plasma_data[time_idx]))
+
+        if "trans" in self.selected_plasma_name:
+            extent = self.plasma_extentYZ
+            data = self.compa_plasma_data[time_idx,x_idx,:,:]
+        else:
+            extent = self.plasma_extentXY_long
+            data = self.compa_plasma_data[time_idx].T
+        
+        print("== DRAW IMSHOW FOR COMPA == ")
+        # self.ax4_plasma1.cla()
+        
+        if is_compa : 
+            self.ax4_plasma2.cla()
+            self.ax4_plasma2.imshow(data,cmap=cmap, vmin=vmin, vmax=vmax, extent = extent)
+        else:
+            self.ax4_plasma1.cla()
+            self.ax4_plasma1.imshow(data, cmap=cmap, vmin=vmin, vmax=vmax, extent = extent)
+
+        
         self.canvas_4_plasma.draw()
         return
+
+    def onUpdateTabCompaPlasma(self, check_id):
+        if self.INIT_tabPlasma == None or self.is_sim_loaded == False: return
+        if self.INIT_tabPlasma:
+            l0 = 2*pi
+            Bx_long_diag = self.S.Probe(2,"Bx")
+            self.plasma_paxisX_long = Bx_long_diag.getAxis("axis1")[:,0]
+            self.plasma_paxisY_long = Bx_long_diag.getAxis("axis2")[:,1]
+            self.plasma_t_range = Bx_long_diag.getTimes()
+
+            Bx_trans_diag = self.S.Probe(1,"Bx")
+            self.plasma_paxisY = Bx_trans_diag.getAxis("axis2")[:,1]
+            self.plasma_paxisZ = Bx_trans_diag.getAxis("axis3")[:,2]
+            self.plasma_paxisX_Bx = Bx_trans_diag.getAxis("axis1")[:,0]           
+
+            self.plasma_extentXY_long = [self.plasma_paxisX_long[0]/l0,self.plasma_paxisX_long[-1]/l0,
+                                  self.plasma_paxisY_long[0]/l0-self.Ltrans/l0/2,self.plasma_paxisY_long[-1]/l0-self.Ltrans/l0/2]
+            self.plasma_extentYZ = [self.plasma_paxisY[0]/l0-self.Ltrans/l0/2,self.plasma_paxisY[-1]/l0-self.Ltrans/l0/2,
+                             self.plasma_paxisZ[0]/l0-self.Ltrans/l0/2,self.plasma_paxisZ[-1]/l0-self.Ltrans/l0/2]
+            
+            Bweight_XY = self.S.ParticleBinning("weight_trans")
+            self.plasma_paxisX_Weight = Bweight_XY.getAxis("x")
+            
+            self.plasma_time_SLIDER.setMaximum(len(self.plasma_t_range)-1)
+            self.plasma_xcut_SLIDER.setMaximum(len(self.plasma_paxisX_Bx)-1)
+            self.plasma_time_SLIDER.setValue(len(self.plasma_t_range)-1)
+            self.plasma_xcut_SLIDER.setValue(len(self.plasma_paxisX_Bx)-3)
+            self.plasma_time_EDIT.setText(str(round(self.plasma_t_range[-1]/l0,2)))
+            self.plasma_xcut_EDIT.setText(str(round(self.plasma_paxisX_Bx[-3]/l0,2)))
+            
+            self.compa_plasma_time_SLIDER.setMaximum(len(self.plasma_t_range)-1)
+            self.compa_plasma_xcut_SLIDER.setMaximum(len(self.plasma_paxisX_Bx)-1)
+            self.compa_plasma_time_SLIDER.setValue(len(self.plasma_t_range)-1)
+            self.compa_plasma_xcut_SLIDER.setValue(len(self.plasma_paxisX_Bx)-3)
+            self.compa_plasma_time_EDIT.setText(str(round(self.plasma_t_range[-1]/l0,2)))
+            self.compa_plasma_xcut_EDIT.setText(str(round(self.plasma_paxisX_Bx[-3]/l0,2)))
+
+            self.plasma_image_list = []
+            self.plasma_data_list = []
+
+            self.INIT_tabPlasma = False
+            app.processEvents()
+            self.updateInfoLabelMem()
+            
+            print("==== INIT PLASMA VAR FOR COMPA ====")
+        
+        if check_id < 10:
+            self.call_compa_ThreadGetPlasmaProbeData(check_id)
+        
+        elif check_id < 100: #SLIDER UPDATE
+            pass
+        
+
+
 
     def onUpdateTabCompa(self, check_id):
         print("=== INIT COMPA ===")
