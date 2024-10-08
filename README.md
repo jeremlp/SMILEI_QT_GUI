@@ -1,4 +1,4 @@
-# SMILEI_QT_GUI V0.7.3
+# SMILEI_QT_GUI V0.8.2
 Graphical User Interface for Smilei PIC code analysis.
 
 
@@ -16,9 +16,9 @@ Can compare Scalar and Plasma diagnostics between 2 simulations
 
 Only the plotted data are stored in memory, making possible to open multiple diagnostic simultaneously. 
 
-### IPython & Log dialog
+### IPython & Log & Memory graph dialog
 
-Allows to access app variables and perform operation or print them to the log dialog.
+Allows to access app variables and perform operation or print them to the log dialog. Memory dialog allows fast and accurate memory management for large simulation diagnostics
 
 ### App screenshot
 ![image](https://github.com/user-attachments/assets/1e560314-302d-4501-be29-c48346a49609)
