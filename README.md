@@ -1,4 +1,4 @@
-# SMILEI_QT_GUI V0.8.2
+# SMILEI_QT_GUI V0.9.2
 Graphical User Interface for Smilei PIC code analysis.
 
 
@@ -21,4 +21,8 @@ Only the plotted data are stored in memory, making possible to open multiple dia
 Allows to access app variables and perform operation or print them to the log dialog. Memory dialog allows fast and accurate memory management for large simulation diagnostics
 
 ### App screenshot
-![image](https://github.com/user-attachments/assets/1e560314-302d-4501-be29-c48346a49609)
+![image](https://github.com/user-attachments/assets/de459a7c-fdd8-473a-bf96-eb640b1a7440)
+
+![image](https://github.com/user-attachments/assets/6ec0e4c1-d5ab-4524-9537-10cfefb28d0d)
+![image](https://github.com/user-attachments/assets/e2a79c50-aaee-434c-8939-a79af2d93a3a)
+![image](https://github.com/user-attachments/assets/5868af82-fec5-405b-bf11-6bff78067d44)
