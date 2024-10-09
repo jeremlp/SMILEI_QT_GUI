@@ -405,14 +405,14 @@ class MainWindow(QtWidgets.QMainWindow):
         #=====================================================================
         # TAB WIDGET
         #=====================================================================
-
+        self.toolBar_height = 50 #45 for Tower
         #---------------------------------------------------------------------
         # TAB 0
         #---------------------------------------------------------------------
         self.figure_0 = Figure()
         self.canvas_0 = FigureCanvas(self.figure_0)
         self.plt_toolbar_0 = NavigationToolbar(self.canvas_0)
-        self.plt_toolbar_0.setFixedHeight(35)
+        self.plt_toolbar_0.setFixedHeight(self.toolBar_height)
         self.ax0 = self.figure_0.add_subplot(1,1,1)
         self.ax0.grid()
         self.ax0.set_xlabel("t/t0",fontsize=14)
@@ -453,7 +453,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.figure_1 = Figure()
         self.canvas_1 = FigureCanvas(self.figure_1)
         self.plt_toolbar_1 = NavigationToolbar(self.canvas_1, self)
-        self.plt_toolbar_1.setFixedHeight(35)
+        self.plt_toolbar_1.setFixedHeight(self.toolBar_height)
 
         fontsize = 12
 
@@ -536,7 +536,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.figure_2 = Figure()
         self.canvas_2 = FigureCanvas(self.figure_2)
         self.plt_toolbar_2 = NavigationToolbar(self.canvas_2, self)
-        self.plt_toolbar_2.setFixedHeight(35)
+        self.plt_toolbar_2.setFixedHeight(self.toolBar_height)
 
         self.track_file_BOX = QtWidgets.QComboBox()
         self.track_file_BOX.addItem("track_eon")
@@ -545,7 +545,7 @@ class MainWindow(QtWidgets.QMainWindow):
         layoutTabSettingsTrackFile = QtWidgets.QHBoxLayout()
         self.track_Npart_EDIT = QtWidgets.QLineEdit("10")
         self.track_Npart_EDIT.setValidator(self.int_validator)
-        self.track_Npart_EDIT.setMaximumWidth(35)
+        self.track_Npart_EDIT.setMaximumWidth(45)
         layoutNpart = self.creatPara("Npart=", self.track_Npart_EDIT,adjust_label=True)
 
         layoutTabSettingsTrackFile.addLayout(layoutNpart)
@@ -568,7 +568,7 @@ class MainWindow(QtWidgets.QMainWindow):
         layoutTabSettings.addWidget(self.plt_toolbar_2)
 
         self.track_groupBox = QtWidgets.QGroupBox("Track Particles Diagnostic")
-        self.track_groupBox.setFixedHeight(120)
+        self.track_groupBox.setFixedHeight(150)
         self.track_groupBox.setLayout(layoutTabSettings)
 
         self.layoutTrack = QtWidgets.QVBoxLayout()
@@ -584,7 +584,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.figure_3 = Figure()
         self.canvas_3 = FigureCanvas(self.figure_3)
         self.plt_toolbar_3 = NavigationToolbar(self.canvas_3, self)
-        self.plt_toolbar_3.setFixedHeight(35)
+        self.plt_toolbar_3.setFixedHeight(self.toolBar_height)
 
         layoutTabSettingsCheck = QtWidgets.QHBoxLayout()
         self.plasma_names = ["Bx","Bx_trans","ne","ne_trans","Lx","Lx_trans","pθ","pθ_trans", "Jθ", "Jθ_trans"]
@@ -654,7 +654,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.figure_4_scalar = Figure()
         self.canvas_4_scalar = FigureCanvas(self.figure_4_scalar)
         self.plt_toolbar_4_scalar = NavigationToolbar(self.canvas_4_scalar)
-        self.plt_toolbar_4_scalar.setFixedHeight(35)
+        self.plt_toolbar_4_scalar.setFixedHeight(self.toolBar_height)
         self.ax4_scalar = self.figure_4_scalar.add_subplot(1,1,1)
         self.ax4_scalar.grid()
         self.ax4_scalar.set_xlabel("t/t0",fontsize=14)
@@ -663,7 +663,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.figure_4_plasma = Figure()
         self.canvas_4_plasma = FigureCanvas(self.figure_4_plasma)
         self.plt_toolbar_4_plasma = NavigationToolbar(self.canvas_4_plasma)
-        self.plt_toolbar_4_plasma.setFixedHeight(35)
+        self.plt_toolbar_4_plasma.setFixedHeight(self.toolBar_height)
         self.ax4_plasma1 = self.figure_4_plasma.add_subplot(1,2,1)
         self.ax4_plasma2 = self.figure_4_plasma.add_subplot(1,2,2)
         sm = plt.cm.ScalarMappable(cmap="viridis", norm=plt.Normalize(vmin=0, vmax=1))
@@ -674,7 +674,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         #-------------- MAIN Groupbox -----------------
         self.compa_load_sim_BUTTON = QtWidgets.QPushButton('Open Comparison')
-        self.compa_load_sim_BUTTON.setFixedWidth(125)
+        self.compa_load_sim_BUTTON.setFixedWidth(150)
         self.compa_load_status_LABEL = QtWidgets.QLabel("")
         self.compa_load_status_LABEL.setStyleSheet("color: black")
         self.compa_load_status_LABEL.setAlignment(QtCore.Qt.AlignCenter)
@@ -683,7 +683,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.compa_sim_directory_name_LABEL.setFont(self.medium_bold_FONT)
         self.compa_sim_directory_name_LABEL.adjustSize()
         self.compa_groupBox = QtWidgets.QGroupBox("Settings")
-        self.compa_groupBox.setFixedHeight(85)
+        self.compa_groupBox.setFixedHeight(110)
         layoutCompaLoadSim =  QtWidgets.QHBoxLayout()
         layoutCompaLoadSim.addWidget(self.compa_load_sim_BUTTON)
         layoutCompaLoadSim.addWidget(self.compa_load_status_LABEL)
@@ -776,7 +776,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.figure_5 = Figure()
         self.canvas_5 = FigureCanvas(self.figure_5)
         self.plt_toolbar_5 = NavigationToolbar(self.canvas_5)
-        self.plt_toolbar_5.setFixedHeight(35)
+        self.plt_toolbar_5.setFixedHeight(self.toolBar_height)
         self.ax5 = self.figure_5.add_subplot(1,1,1)
         self.figure_5.tight_layout()
         sm = plt.cm.ScalarMappable(cmap="viridis", norm=plt.Normalize(vmin=0, vmax=1))
@@ -794,7 +794,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         layoutTabSettingsBinning.addWidget(self.plt_toolbar_5)
         self.binning_groupBox = QtWidgets.QGroupBox("Particle Binning Diagnostics")
-        self.binning_groupBox.setFixedHeight(110)
+        self.binning_groupBox.setFixedHeight(150)
         self.binning_groupBox.setLayout(layoutTabSettingsBinning)
 
         self.layoutBinning = QtWidgets.QVBoxLayout()
@@ -842,7 +842,7 @@ class MainWindow(QtWidgets.QMainWindow):
         settings_width = self.settings_groupBox.geometry().width()
         window_width = self.geometry().width()
         logo_width = window_width-settings_width
-        self.SMILEI_ICON_LABEL = QtGui.QIcon(os.environ["SMILEI_QT"]+"\\Ressources\\Smilei_GUI_logo_V3.png")
+        self.SMILEI_ICON_LABEL = QtGui.QIcon(os.environ["SMILEI_QT"]+"\\Ressources\\smileiLogo.svg") #CUSTOM GUI LOGO
         self.smilei_icon_BUTTON = QtWidgets.QPushButton()
         self.smilei_icon_BUTTON.setIcon(self.SMILEI_ICON_LABEL)
         self.smilei_icon_BUTTON.setIconSize(QtCore.QSize(int(logo_width/1.3),int(logo_width*3/8/1.3))) # 800 x 300
@@ -1770,7 +1770,8 @@ class MainWindow(QtWidgets.QMainWindow):
             time0 = time.perf_counter()
             mean_coef = 5
             ax1.scatter(self.r[0]/l0,self.Lx_track[-1],s=1,label="$L_x$")
-
+            ax1.set_xlabel("$r/\lambda$")
+            ax1.set_xylabel("$L_x$")
             a_range_r,MLx = self.averageAM(self.r[0], self.Lx_track[-1], 0.5)
             ax1.plot(a_range_r/l0, MLx*mean_coef,"r",label="5<$L_x$>")
             ax1.grid()
@@ -2305,8 +2306,11 @@ class MainWindow(QtWidgets.QMainWindow):
                 time_idx = -1
 
                 self.binning_data = np.array(diag.getData())
-                if self.binning_data.ndim == 2:
-                    x_range = diag.getAxis(diag_name)
+                if self.binning_data.ndim == 1: # function of time only
+                        self.binning_image, = self.ax5.plot(t_range/self.l0,self.binning_data, label=diag_name)                
+                        self.ax5.set_xlabel("t/t0")
+                elif self.binning_data.ndim == 2:
+                    x_range = np.array(diag.getAxis(diag_name))
 
                     self.ax5.set_xlabel(diag_name)
                     self.ax5.set_ylabel("weight")
@@ -2314,6 +2318,11 @@ class MainWindow(QtWidgets.QMainWindow):
                         self.binning_image, = self.ax5.plot(x_range,self.binning_data[time_idx], label=diag_name)
                         self.ax5.set_xscale("log")
                         self.ax5.set_yscale("log")
+                    elif diag_name =="Lx_x":
+                        x_range = np.array(diag.getAxis("x"))
+                        self.ax5.set_xlabel("$x/\lambda$")
+                        self.ax5.set_ylabel("$L_x$")
+                        self.binning_image, = self.ax5.plot(x_range/self.l0,self.binning_data[time_idx], label=diag_name)
                     else:
                         self.binning_image, = self.ax5.plot(x_range/self.l0,self.binning_data[time_idx], label=diag_name)
 
@@ -2348,7 +2357,8 @@ class MainWindow(QtWidgets.QMainWindow):
         elif id == 100:
             time_idx = self.binning_time_SLIDER.sliderPosition()
             print(time_idx,self.binning_data[time_idx].shape)
-            if self.binning_data.ndim == 2:
+            if self.binning_data.ndim == 1: return
+            elif self.binning_data.ndim == 2:
                 self.binning_image.set_ydata(self.binning_data[time_idx])
             else:
                 self.binning_image.set_data(self.binning_data[time_idx].T)
