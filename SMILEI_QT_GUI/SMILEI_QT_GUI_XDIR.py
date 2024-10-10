@@ -201,6 +201,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.int_validator.setLocale(QtCore.QLocale("en_US"))
 
         self.MEMORY = psutil.virtual_memory
+        self.DISK = psutil.disk_usage(os.environ["SMILEI_CLUSTER"])
         self.SCRIPT_VERSION ='0.10.1 "Binning Compa & Trnd download"'
         self.COPY_RIGHT = "Jeremy LA PORTE"
         self.spyder_default_stdout = sys.stdout
@@ -823,9 +824,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.figure_5.tight_layout()
         sm = plt.cm.ScalarMappable(cmap="viridis", norm=plt.Normalize(vmin=0, vmax=1))
         self.binning_colorbar = self.figure_5.colorbar(sm, ax=self.ax5, pad=0.01)
+
         layoutTabSettingsBinning = QtWidgets.QVBoxLayout()
         self.binning_diag_name_EDIT = QtWidgets.QLineEdit("ekin")
-        layoutTabSettingsBinning.addWidget(self.binning_diag_name_EDIT)
+        self.binning_log_CHECK = QtWidgets.QCheckBox("Log10")
+
+        layoutTabSettingsBinningNameLog = QtWidgets.QHBoxLayout()
+        layoutTabSettingsBinningNameLog.addWidget(self.binning_diag_name_EDIT)
+        layoutTabSettingsBinningNameLog.addWidget(self.binning_log_CHECK)
+        layoutTabSettingsBinning.addLayout(layoutTabSettingsBinningNameLog)
+
 
         self.binning_time_SLIDER = QtWidgets.QSlider(QtCore.Qt.Horizontal)
         self.binning_time_SLIDER.setRange(0,1)
@@ -914,7 +922,7 @@ class MainWindow(QtWidgets.QMainWindow):
         layoutBottom.setSizeConstraint(QtWidgets.QLayout.SetFixedSize)
 
 
-        self.general_info_LABEL = QtWidgets.QLabel(f"Version: {self.SCRIPT_VERSION}  |  Memory: {self.MEMORY().used*100/self.MEMORY().total:.0f}% | {self.COPY_RIGHT}")
+        self.general_info_LABEL = QtWidgets.QLabel(f"Version: {self.SCRIPT_VERSION}  |  Memory: {self.MEMORY().used*100/self.MEMORY().total:.0f}% | Storage: {self.DISK.free/(2**30):.1f} Go | {self.COPY_RIGHT}")
 
 
         layoutMAIN = QtWidgets.QVBoxLayout()
@@ -990,6 +998,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
         self.binning_diag_name_EDIT.returnPressed.connect(lambda: self.onUpdateTabBinning(0))
+        self.binning_log_CHECK.clicked.connect(lambda: self.onUpdateTabBinning(100))
         self.binning_time_SLIDER.sliderMoved.connect(lambda: self.onUpdateTabBinning(100))
 
 
@@ -1013,7 +1022,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.memory_update_TIMER = QtCore.QTimer()
         self.memory_update_TIMER.setInterval(5000) #in ms
-        self.memory_update_TIMER.timeout.connect(self.updateInfoLabelMem)
+        self.memory_update_TIMER.timeout.connect(self.updateInfoLabel)
         self.memory_update_TIMER.start()
 
         # self.reset.clicked.connect(self.onReset)
@@ -1104,14 +1113,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.memory_DIALOG.show()
         return
 
-    def updateInfoLabelMem(self):
+    def updateInfoLabel(self):
         mem_prc = self.MEMORY().used*100/self.MEMORY().total
         if mem_prc > 85:
-            self.general_info_LABEL.setText(f"Version: {self.SCRIPT_VERSION} | <font color='red'>Memory: {mem_prc:.0f}%</font> | {self.COPY_RIGHT}")
+            self.general_info_LABEL.setText(f"Version: {self.SCRIPT_VERSION}  |  Memory: {self.MEMORY().used*100/self.MEMORY().total:.0f}% | Storage: {self.DISK.free/(2**30):.1f} Go | {self.COPY_RIGHT}")
+
+            self.general_info_LABEL.setText(f"Version: {self.SCRIPT_VERSION} | <font color='red'>Memory: {mem_prc:.0f}%</font> | Storage: {self.DISK.free/(2**30):.1f} Go | {self.COPY_RIGHT}")
         elif mem_prc > 75:
-            self.general_info_LABEL.setText(f"Version: {self.SCRIPT_VERSION} | <font color='orange'>Memory: {mem_prc:.0f}%</font> | {self.COPY_RIGHT}")
+            self.general_info_LABEL.setText(f"Version: {self.SCRIPT_VERSION} | <font color='orange'>Memory: {mem_prc:.0f}%</font> | Storage: {self.DISK.free/(2**30):.1f} Go | {self.COPY_RIGHT}")
         else:
-            self.general_info_LABEL.setText(f"Version: {self.SCRIPT_VERSION} | Memory: {mem_prc:.0f}% | {self.COPY_RIGHT}")
+            self.general_info_LABEL.setText(f"Version: {self.SCRIPT_VERSION} | Memory: {mem_prc:.0f}% | Storage: {self.DISK.free/(2**30):.1f} Go | {self.COPY_RIGHT}")
 
     def onOpenSim(self):
         sim_file_DIALOG= QtWidgets.QFileDialog()
@@ -1248,7 +1259,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.INIT_tabPlasma = True
         self.INIT_tabCompa = True
 
-        self.updateInfoLabelMem()
+        self.updateInfoLabel()
         if self.actionDiagScalar.isChecked(): self.onUpdateTabScalar(0)
         if self.actionDiagFields.isChecked(): self.onUpdateTabFields(-1)
         if self.actionDiagTrack.isChecked(): self.onUpdateTabTrack(-1)
@@ -1438,7 +1449,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 # self.loadthread.finished.connect(self.onInitTabTornado)
                 # self.loadthread.start()
                 # self.onInitTabTornado()
-        self.updateInfoLabelMem()
+        self.updateInfoLabel()
         return
 
     def writeToFileCompa(self, file_name, file_data):
@@ -1686,7 +1697,7 @@ class MainWindow(QtWidgets.QMainWindow):
             # self.loading_LABEL.deleteLater()
             self.INIT_tabFields = False
             app.processEvents()
-            self.updateInfoLabelMem()
+            self.updateInfoLabel()
 
         l0 = 2*pi
         if check_id < 10: #CHECK_BOX UPDATE
@@ -1765,40 +1776,40 @@ class MainWindow(QtWidgets.QMainWindow):
                 app.processEvents()
 
             self.loop_in_process = False
-        self.updateInfoLabelMem()
+        self.updateInfoLabel()
 
     def onRemoveScalar(self):
         if not self.INIT_tabScalar: #IF TAB OPEN AND SIM LOADED
             gc.collect()
-        self.updateInfoLabelMem()
+        self.updateInfoLabel()
 
     def onRemoveFields(self):
         if not self.INIT_tabFields: #IF TAB OPEN AND SIM LOADED
             del self.fields_image_list, self.fields_data_list,self.fields_paxisX,self.fields_paxisY,self.fields_paxisZ,
             self.extentXY,self.extentXY,self.fields_t_range,self.fields_trans_mid_idx,self.fields_long_mid_idx
             gc.collect()
-        self.updateInfoLabelMem()
+        self.updateInfoLabel()
 
     def onRemoveTrack(self):
         if not self.INIT_tabTrack:
             del self.track_N, self.track_t_range,self.track_traj,self.x,self.y,self.z,self.px,self.py,self.pz,self.r,self.Lx_track
             gc.collect()
-        self.updateInfoLabelMem()
+        self.updateInfoLabel()
 
     def onRemovePlasma(self):
         if not self.INIT_tabPlasma: #IF TAB OPEN AND SIM LOADED
             del self.plasma_data_list, self.plasma_paxisX_long, self.plasma_paxisY_long, self.plasma_t_range, self.plasma_paxisY,
             self.plasma_paxisZ, self.plasma_paxisX_Bx, self.plasma_extentXY_long , self.plasma_extentYZ
             gc.collect()
-        self.updateInfoLabelMem()
+        self.updateInfoLabel()
 
     def onRemoveCompa(self):
         if not self.INIT_tabPlasma: pass
-        self.updateInfoLabelMem()
+        self.updateInfoLabel()
 
     def onRemoveTornado(self):
         gc.collect()
-        self.updateInfoLabelMem()
+        self.updateInfoLabel()
 
     def onUpdateTabTrack(self, check_id):
 
@@ -1848,7 +1859,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.INIT_tabTrack = False
             # self.loading_LABEL.deleteLater()
             app.processEvents()
-            self.updateInfoLabelMem()
+            self.updateInfoLabel()
 
         if check_id <= 0:
             if len(self.figure_2.axes) !=0:
@@ -1905,7 +1916,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 time.sleep(anim_speed)
                 app.processEvents()
             self.loop_in_process = False
-        self.updateInfoLabelMem()
+        self.updateInfoLabel()
 
 
     def averageAM(self, X,Y,dr_av):
@@ -2071,7 +2082,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
             self.INIT_tabPlasma = False
             app.processEvents()
-            self.updateInfoLabelMem()
+            self.updateInfoLabel()
 
         l0 = 2*pi
         if check_id < 20: #CHECK_BOX UPDATE
@@ -2255,7 +2266,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.INIT_tabPlasma == None or self.is_sim_loaded == False:
             # self.showError("Simulation not loaded")
             return
-        if self.INIT_tabPlasma:
+        if check_id < 10:
             l0 = 2*pi
             Bx_long_diag = self.S.Probe(2,"Bx")
             self.plasma_paxisX_long = Bx_long_diag.getAxis("axis1")[:,0]
@@ -2279,6 +2290,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.plasma_time_EDIT.setText(str(round(self.plasma_t_range[-1]/l0,2)))
             self.plasma_xcut_EDIT.setText(str(round(self.plasma_paxisX_Bx[-3]/l0,2)))
 
+            print(len(self.plasma_t_range)-1)
             self.compa_plasma_time_SLIDER.setMaximum(len(self.plasma_t_range)-1)
             self.compa_plasma_xcut_SLIDER.setMaximum(len(self.plasma_paxisX_Bx)-1)
             self.compa_plasma_time_SLIDER.setValue(len(self.plasma_t_range)-1)
@@ -2296,7 +2308,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
             self.INIT_tabPlasma = False
             app.processEvents()
-            self.updateInfoLabelMem()
+            self.updateInfoLabel()
 
             print("==== INIT PLASMA VAR FOR COMPA ====")
 
@@ -2422,11 +2434,11 @@ class MainWindow(QtWidgets.QMainWindow):
                 try:
                     diag = self.S.ParticleBinning(diag_name)
                     binning_data = np.array(diag.getData())
-
+                    # if self.binning_log_CHECK.isChecked():
+                    #     data = np.log10(binning_data)
                     if is_compa:
                         diag2 = self.compa_S.ParticleBinning(diag_name)
                         binning_data2 = np.array(diag2.getData())
-
                 except IndexError:
                     self.showError(f'No ParticleBinning diagnostic "{diag_name}" found')
                     return
@@ -2444,6 +2456,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     binning_image, = ax.plot(t_range/self.l0,binning_data, label=diag_name)
                     ax.set_xlabel("t/t0")
                     if is_compa: binning_image_compa, = ax.plot(t_range/self.l0,binning_data2, label=diag_name+"_compa")
+                    if self.binning_log_CHECK.isChecked(): ax.set_yscale("log")
                 elif binning_data.ndim == 2:
                     x_range = np.array(diag.getAxis(diag_name))
                     if diag_name == "ekin":
@@ -2452,19 +2465,34 @@ class MainWindow(QtWidgets.QMainWindow):
                         ax.set_yscale("log")
                         if is_compa: binning_image2, = ax.plot(x_range,binning_data2[time_idx], label=diag_name+"_compa")
 
-                    elif diag_name =="Lx_x" or diag_name =="Lx_x_av":
+                    elif diag_name=="Lx_x" or diag_name=="Lx_x_av" or diag_name=="Lx_r":
                         x_range = np.array(diag.getAxis("x"))
                         ax.set_xlabel("$x/\lambda$")
+
+                        if diag_name=="Lx_r":
+                            x_range = diag.getAxis("user_function0")
+                            ax.set_xlabel("$r/\lambda$")
+
                         ax.set_ylabel("$L_x$")
                         binning_image, = ax.plot(x_range/self.l0,binning_data[time_idx], label=diag_name)
                         if is_compa: binning_image2, = ax.plot(x_range/self.l0,binning_data2[time_idx], label=diag_name+"_compa")
+
                     else:
                         binning_image, = ax.plot(x_range/self.l0,binning_data[time_idx], label=diag_name)
                         if is_compa: binning_image2, = ax.plot(x_range/self.l0,binning_data2[time_idx], label=diag_name+"_compa")
                         ax.set_xlabel(diag_name)
                         ax.set_ylabel("weight")
                         print(diag_name)
+                    if self.binning_log_CHECK.isChecked(): ax.set_yscale("log")
                 elif binning_data.ndim == 3:
+                    if self.binning_log_CHECK.isChecked():
+                        data = np.log10(binning_data)
+                        if is_compa: data2 = np.log10(binning_data2)
+                    else:
+                        data = binning_data
+                        if is_compa: data2 = binning_data2
+
+
                     if is_compa:
                         figure.clf() #dont use single ax figure
                         ax = figure.add_subplot(1,2,1)
@@ -2476,23 +2504,22 @@ class MainWindow(QtWidgets.QMainWindow):
                         x_range  = diag.getAxis("x")
                         px_range = diag.getAxis("px")
                         extent = [x_range[0]/self.l0,x_range[-1]/self.l0,px_range[0],px_range[-1]]
-                        binning_image = ax.imshow(binning_data[time_idx].T, extent=extent, cmap="smilei",aspect="auto", origin="lower")
-                        if is_compa: binning_image2 = ax2.imshow(binning_data2[time_idx].T, extent=extent, cmap="smilei",aspect="auto", origin="lower")
+                        binning_image = ax.imshow(data[time_idx].T, extent=extent, cmap="smilei",aspect="auto", origin="lower")
+                        if is_compa: binning_image2 = ax2.imshow(data2[time_idx].T, extent=extent, cmap="smilei",aspect="auto", origin="lower")
                         ax.set_xlabel("$x/\lambda$")
                         ax.set_ylabel("px")
-                        break
                     if diag_name =="phase_space_Lx":
                         x_range  = diag.getAxis("x")
                         px_range = diag.getAxis("user_function0")
                         extent = [x_range[0]/self.l0,x_range[-1]/self.l0,px_range[0],px_range[-1]]
-                        binning_image = ax.imshow(binning_data[time_idx].T, extent=extent, cmap="smilei",aspect="auto", origin="lower")
-                        if is_compa: binning_image2 = ax2.imshow(binning_data2[time_idx].T, extent=extent, cmap="smilei",aspect="auto", origin="lower")
+                        binning_image = ax.imshow(data[time_idx].T, extent=extent, cmap="smilei",aspect="auto", origin="lower")
+                        if is_compa: binning_image2 = ax2.imshow(data2[time_idx].T, extent=extent, cmap="smilei",aspect="auto", origin="lower")
                         ax.set_xlabel("$x/\lambda$")
                         ax.set_ylabel("Lx")
-                        break
 
-            self.binning_colorbar = figure.colorbar(binning_image, ax=ax, pad=0.01)
-            if is_compa: self.binning_colorbar2 = figure.colorbar(binning_image2, ax=ax2, pad=0.01)
+                    self.binning_colorbar = figure.colorbar(binning_image, ax=ax, pad=0.01)
+                    if is_compa: self.binning_colorbar2 = figure.colorbar(binning_image2, ax=ax2, pad=0.01)
+                    break
 
 
             if is_compa:
@@ -2526,20 +2553,47 @@ class MainWindow(QtWidgets.QMainWindow):
 
                 time_idx = self.compa_binning_time_SLIDER.sliderPosition()
                 t_range = self.compa_binning_t_range
+                data = binning_data[time_idx]
+                data2 = binning_data2[time_idx]
             else:
                 binning_image = self.binning_image
                 binning_data = self.binning_data
                 time_idx = self.binning_time_SLIDER.sliderPosition()
                 t_range = self.binning_t_range
+                data = binning_data[time_idx]
 
-            if binning_data.ndim == 1: return
+            # print(t_range)
+
+            if binning_data.ndim == 1:
+                binning_image.axes.set_yscale("log")
+                if is_compa: binning_image2.axes.set_yscale("log")
+                return
 
             elif binning_data.ndim == 2:
-                binning_image.set_ydata(binning_data[time_idx])
-                if is_compa: binning_image2.set_ydata(binning_data2[time_idx])
-            else:
-                binning_image.set_data(binning_data[time_idx].T)
-                if is_compa: binning_image2.set_data(binning_data2[time_idx].T)
+                binning_image.set_ydata(data)
+                if is_compa: binning_image2.set_ydata(data2)
+
+                if self.binning_log_CHECK.isChecked():
+                    binning_image.axes.set_yscale("log")
+                    if is_compa: binning_image2.axes.set_yscale("log")
+                else:
+                    binning_image.axes.set_yscale("linear")
+                    if is_compa: binning_image2.axes.set_yscale("linear")
+
+            elif binning_data.ndim == 3:
+                if self.binning_log_CHECK.isChecked():
+                    binning_image.set_data(np.log10(data).T)
+                    if is_compa: binning_image2.set_data(np.log10(data2).T)
+                else:
+                    binning_image.set_data(data.T)
+                    if is_compa: binning_image2.set_data(data2.T)
+
+            for ax in figure.axes:
+                if ax.get_label()!='<colorbar>':
+                    ax.relim()            # Recompute the limits
+                    ax.autoscale_view()   # Apply the new limits
+        else:
+            raise Exception('id for Binning invalid')
 
         figure.suptitle(f"t = {t_range[time_idx]/self.l0:.2f} $t_0$")
         canvas.draw()
@@ -2718,6 +2772,7 @@ class MainWindow(QtWidgets.QMainWindow):
         layout = self.layout_progress_bar_dict[str(sim_id)]
         progress_bar = layout.itemAt(2).widget()
         progress_bar.setValue(prc)
+        self.updateInfoLabel()
         return
 
     def onDownloadSimDataFinished(self,sim_id, tornado_download_TIMER):
@@ -2730,7 +2785,11 @@ class MainWindow(QtWidgets.QMainWindow):
         dl_sim_BUTTON.setStyleSheet("border-color: green")
         dl_sim_BUTTON.setEnabled(False)
         close_sim_BUTTON.setEnabled(True)
-        ETA_label.setPixmap(QtGui.QIcon(os.environ["SMILEI_QT"]+"\\Ressources\\check_mark_icon.png")) #green check
+        pixmap = QtGui.QPixmap(os.environ["SMILEI_QT"]+"\\Ressources\\green_check_icon.jpg")
+        pixmap = pixmap.scaled(ETA_label.size(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation);
+
+        ETA_label.setPixmap(pixmap) #green check
+
         ETA_label.setStyleSheet("background-color: #80ef80")
         progress_bar.setStyleSheet(self.qss_progressBar_DOWNLOADED)
 
