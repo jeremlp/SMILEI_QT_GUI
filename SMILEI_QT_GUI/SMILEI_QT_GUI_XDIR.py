@@ -57,8 +57,8 @@ class MainWindow(QtWidgets.QMainWindow):
         print("SCREEN SIZE:",size.width(),"x",size.height())
         is_screen_2K = size.width() > 1920
 
-        window_height = int(size.height()/1.5)
-        window_width = int(size.width()/1.5)
+        window_height = int(size.height()/1.3333)
+        window_width = int(size.width()/1.3333)
 
         self.thread = QThreadPool()
 
@@ -201,7 +201,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.int_validator.setLocale(QtCore.QLocale("en_US"))
 
         self.MEMORY = psutil.virtual_memory
-        self.SCRIPT_VERSION ='0.8.2 "BINNING"'
+        self.SCRIPT_VERSION ='0.10.1 "Binning Compa & Trnd download"'
         self.COPY_RIGHT = "Jeremy LA PORTE"
         self.spyder_default_stdout = sys.stdout
 
@@ -209,7 +209,6 @@ class MainWindow(QtWidgets.QMainWindow):
         # MENU BAR
         #==============================
         layoutMenuBar = QtWidgets.QVBoxLayout()
-
 
         menu = self.menuBar()
 
@@ -391,6 +390,10 @@ class MainWindow(QtWidgets.QMainWindow):
         boxLayout_sim_info.addLayout(layoutPower_SI)
         boxLayout_sim_info.addLayout(layoutIntensity_SI)
 
+        self.run_time_LABEL = QtWidgets.QLabel("")
+        self.run_time_LABEL.setFont(self.medium_bold_FONT)
+        layoutRunTime = self.creatPara("Run time :", self.run_time_LABEL)
+        boxLayout_sim_info.addLayout(layoutRunTime)
 
         verticalSpacer = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         boxLayout_sim_info.addItem(verticalSpacer)
@@ -587,7 +590,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.plt_toolbar_3.setFixedHeight(self.toolBar_height)
 
         layoutTabSettingsCheck = QtWidgets.QHBoxLayout()
-        self.plasma_names = ["Bx","Bx_trans","ne","ne_trans","Lx","Lx_trans","pθ","pθ_trans", "Jθ", "Jθ_trans"]
+        self.plasma_names = ["Bx","Bx_trans","ne","ne_trans","Lx","Lx_trans","pθ","pθ_trans", "Jθ", "Jθ_trans", "Ekin", "Ekin_trans"]
         self.plasma_check_list = []
         for i, name in enumerate(self.plasma_names):
             plasma_CHECK = QtWidgets.QCheckBox(name)
@@ -601,7 +604,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 layoutTabSettingsCheck.addWidget(separator1)
             layoutTabSettingsCheck.addWidget(plasma_CHECK)
 
-        layoutTabSettingsCheck.setSpacing(20)
+        # layoutTabSettingsCheck.addStretch(50)
         layoutTabSettingsCheck.setContentsMargins(0, 0, 0, 0)
 
 
@@ -609,7 +612,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # self.Ey_CHECK.setChecked(True)
         self.plasma_check_list[1].setChecked(True)
 
-        layoutTabSettingsCheck.setSpacing(4)
+        layoutTabSettingsCheck.setSpacing(0)
 
         self.plasma_time_SLIDER = QtWidgets.QSlider(QtCore.Qt.Horizontal)
         self.plasma_time_SLIDER.setRange(0,1)
@@ -639,6 +642,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.plasma_groupBox = QtWidgets.QGroupBox("Plasma Diagnostics")
         self.plasma_groupBox.setFixedHeight(210)
+        # self.plasma_groupBox.setMaximumWidth(400)
         self.plasma_groupBox.setLayout(layoutTabSettings)
 
         self.layoutPlasma = QtWidgets.QVBoxLayout()
@@ -693,6 +697,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.diag_type_BOX = QtWidgets.QComboBox()
         self.diag_type_BOX.addItem("Scalar")
         self.diag_type_BOX.addItem("Plasma")
+        self.diag_type_BOX.addItem("Binning")
         boxLayout_settings.addWidget(self.diag_type_BOX)
         self.compa_groupBox.setLayout(boxLayout_settings)
 
@@ -712,6 +717,37 @@ class MainWindow(QtWidgets.QMainWindow):
         self.compa_scalar_groupBox = QtWidgets.QGroupBox("Compa Scalar Diagnostics")
         self.compa_scalar_groupBox.setFixedHeight(110)
         self.compa_scalar_groupBox.setLayout(layoutTabSettingsCompaScalar)
+
+        #-------------- BINNING Groupbox -----------------
+        self.figure_4_binning = Figure()
+        self.canvas_4_binning = FigureCanvas(self.figure_4_binning)
+        self.plt_toolbar_4_binning = NavigationToolbar(self.canvas_4_binning)
+        self.plt_toolbar_4_binning.setFixedHeight(self.toolBar_height)
+        self.ax4_binning = self.figure_4_binning.add_subplot(1,1,1)
+        self.figure_4_binning.tight_layout()
+        sm = plt.cm.ScalarMappable(cmap="viridis", norm=plt.Normalize(vmin=0, vmax=1))
+        self.compa_binning_colorbar = self.figure_4_binning.colorbar(sm, ax=self.ax4_binning, pad=0.01)
+        layoutTabSettingsCompaBinning = QtWidgets.QVBoxLayout()
+        self.compa_binning_diag_name_EDIT = QtWidgets.QLineEdit("ekin")
+        layoutTabSettingsCompaBinning.addWidget(self.compa_binning_diag_name_EDIT)
+
+        self.compa_binning_time_SLIDER = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        self.compa_binning_time_SLIDER.setRange(0,1)
+        layoutCompaBinningTimeSlider = self.creatPara("t/t0=", self.compa_binning_time_SLIDER ,adjust_label=True)
+
+        layoutTabSettingsCompaBinning.addLayout(layoutCompaBinningTimeSlider)
+
+        layoutTabSettingsCompaBinning.addWidget(self.plt_toolbar_4_binning)
+        self.compa_binning_groupBox = QtWidgets.QGroupBox("Particle Binning Diagnostics")
+        self.compa_binning_groupBox.setFixedHeight(150)
+        self.compa_binning_groupBox.setLayout(layoutTabSettingsCompaBinning)
+
+        # self.layoutCompaBinning = QtWidgets.QVBoxLayout()
+        # self.layoutCompaBinning.addWidget(self.compa_binning_groupBox)
+        # self.layoulayoutCompaBinningtBinning.addWidget(self.canvas_4_binning)
+        # self.compa_binning_Widget = QtWidgets.QWidget()
+        # self.compa_binning_Widget.setLayout(self.layoutCompaBinning)
+
 
         #-------------- PLASMA Groupbox -----------------
         layoutCompaTabSettingsCheck = QtWidgets.QHBoxLayout()
@@ -763,6 +799,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.compa_plasma_groupBox.hide()
         self.canvas_4_plasma.hide()
+
+        self.compa_binning_groupBox.hide()
+        self.canvas_4_binning.hide()
+
+        self.layoutCompa.addWidget(self.compa_binning_groupBox)
+        self.layoutCompa.addWidget(self.canvas_4_binning)
 
         self.layoutCompa.addWidget(self.compa_plasma_groupBox)
         self.layoutCompa.addWidget(self.canvas_4_plasma)
@@ -842,15 +884,32 @@ class MainWindow(QtWidgets.QMainWindow):
         settings_width = self.settings_groupBox.geometry().width()
         window_width = self.geometry().width()
         logo_width = window_width-settings_width
-        self.SMILEI_ICON_LABEL = QtGui.QIcon(os.environ["SMILEI_QT"]+"\\Ressources\\smileiLogo.svg") #CUSTOM GUI LOGO
-        self.smilei_icon_BUTTON = QtWidgets.QPushButton()
+        self.SMILEI_ICON_LABEL = QtGui.QIcon(os.environ["SMILEI_QT"]+"\\Ressources\\Smilei_GUI_logo_V3.png") #CUSTOM GUI LOGO
+        self.smilei_icon_BUTTON = QtWidgets.QPushButton(self.programm_TABS)
         self.smilei_icon_BUTTON.setIcon(self.SMILEI_ICON_LABEL)
         self.smilei_icon_BUTTON.setIconSize(QtCore.QSize(int(logo_width/1.3),int(logo_width*3/8/1.3))) # 800 x 300
+        # self.smilei_icon_BUTTON.setIconSize(QtCore.QSize(10,10)) # 800 x 300
+
         self.smilei_icon_BUTTON.setStyleSheet("QPushButton { border: none; }")
+
+        # self.smilei_icon_BUTTON.setGeometry(int((self.programm_TABS.width()-100)/2), int((self.programm_TABS.height()-100)/2) , 100, 100)
+
+        layoutSmileiLogo = QtWidgets.QHBoxLayout()
+        layoutSmileiLogo.addWidget(self.smilei_icon_BUTTON)
+        self.programm_TABS.setLayout(layoutSmileiLogo)
+
+
+        # print(self.programm_TABS.geometry().bottomRight())
+        # print(self.smilei_icon_BUTTON.geometry().bottomRight())
+        # p = self.programm_TABS.geometry().bottomRight()/2 #- self.smilei_icon_BUTTON.geometry().bottomRight()
+        # print(p)
+
+        # self.smilei_icon_BUTTON.move(p)
         # self.smilei_icon_BUTTON.hide()
 
-        layoutTabsAndLeft.addWidget(self.smilei_icon_BUTTON)
-        self.programm_TABS.hide()
+        # layoutTabsAndLeft.addWidget(self.smilei_icon_BUTTON)
+        # self.programm_TABS.ad
+        # self.programm_TABS.hide()
         layoutBottom = QtWidgets.QHBoxLayout()
         layoutBottom.setSizeConstraint(QtWidgets.QLayout.SetFixedSize)
 
@@ -925,6 +984,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.compa_plasma_xcut_SLIDER.sliderPressed.connect(lambda: self.onUpdateTabCompaPlasma(200))
         self.compa_plasma_xcut_EDIT.returnPressed.connect(lambda: self.onUpdateTabCompaPlasma(201))
         self.compa_plasma_play_time_BUTTON.clicked.connect(lambda: self.onUpdateTabCompaPlasma(1000))
+
+        self.compa_binning_diag_name_EDIT.returnPressed.connect(partial(self.onUpdateTabBinning, id=0, is_compa=True))
+        self.compa_binning_time_SLIDER.sliderMoved.connect(partial(self.onUpdateTabBinning, id=100, is_compa=True))
 
 
         self.binning_diag_name_EDIT.returnPressed.connect(lambda: self.onUpdateTabBinning(0))
@@ -1122,6 +1184,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.Llong_LABEL.setText(f"{self.Llong/l0:.1f}𝝀")
         self.tsim_LABEL.setText(f"{self.tsim/l0:.1f}𝝀")
 
+        run_time, push_time = self.getSimRunTime(self.S._results_path[0])
+        NODES = self.S.namelist.smilei_mpi_size//2
+
+        self.run_time_LABEL.setText(f"{(run_time/60)//60:.0f}h{(run_time/60)%60:0>2.0f} /{NODES} nds ({push_time:.0f} ns)")
+
 
         self.intensity_SI = (self.a0/0.85)**2 *10**18 #W/cm^2
 
@@ -1230,26 +1297,31 @@ class MainWindow(QtWidgets.QMainWindow):
         app.processEvents()
     """
     def onCloseTab(self, currentIndex):
-          tab_name = self.programm_TABS.tabText(currentIndex)
-          self.programm_TABS.removeTab(currentIndex)
-          if tab_name=="SCALAR":
-              self.actionDiagScalar.setChecked(False)
-              self.onRemoveScalar()
-          if tab_name=="FIELDS":
-              self.actionDiagFields.setChecked(False)
-              self.onRemoveFields()
-          if tab_name=="TRACK":
-              self.actionDiagTrack.setChecked(False)
-              self.onRemoveTrack()
-          if tab_name=="PLASMA":
-              self.actionDiagPlasma.setChecked(False)
-              self.onRemovePlasma()
-          if tab_name=="TORNADO":
-              self.actionTornado.setChecked(False)
-              self.onRemoveTornado()
-          if tab_name == "COMPA":
-              self.actionDiagCompa.setChecked(False)
-              self.onRemoveCompa()
+        tab_name = self.programm_TABS.tabText(currentIndex)
+        self.programm_TABS.removeTab(currentIndex)
+        if tab_name=="SCALAR":
+            self.actionDiagScalar.setChecked(False)
+            self.onRemoveScalar()
+        if tab_name=="FIELDS":
+            self.actionDiagFields.setChecked(False)
+            self.onRemoveFields()
+        if tab_name=="TRACK":
+            self.actionDiagTrack.setChecked(False)
+            self.onRemoveTrack()
+        if tab_name=="PLASMA":
+            self.actionDiagPlasma.setChecked(False)
+            self.onRemovePlasma()
+        if tab_name=="TORNADO":
+            self.actionTornado.setChecked(False)
+            self.onRemoveTornado()
+        if tab_name == "COMPA":
+            self.actionDiagCompa.setChecked(False)
+            self.onRemoveCompa()
+        # print(self.programm_TABS.count())
+        if self.programm_TABS.count() ==0:
+            self.smilei_icon_BUTTON.show()
+        return
+
 
     def onMenuTabs(self, tab_name):
         if tab_name == "SCALAR":
@@ -1257,11 +1329,13 @@ class MainWindow(QtWidgets.QMainWindow):
                 for currentIndex in range(self.programm_TABS.count()):
                     if self.programm_TABS.tabText(currentIndex) == "SCALAR":
                         self.programm_TABS.removeTab(currentIndex)
+                        if self.programm_TABS.count() ==0: self.smilei_icon_BUTTON.show()
                         self.onRemoveScalar()
             else:
                 self.programm_TABS.addTab(self.scalar_Widget,"SCALAR")
                 self.programm_TABS.show()
                 self.smilei_icon_BUTTON.hide()
+                # self.smilei_icon_BUTTON.deleteLater()
                 self.INIT_tabScalar = True
                 app.processEvents()
                 self.onUpdateTabScalar(0)
@@ -1271,6 +1345,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 for currentIndex in range(self.programm_TABS.count()):
                     if self.programm_TABS.tabText(currentIndex) == "FIELDS":
                         self.programm_TABS.removeTab(currentIndex)
+                        if self.programm_TABS.count() ==0: self.smilei_icon_BUTTON.show()
                         self.onRemoveFields()
             else:
                 self.programm_TABS.addTab(self.fields_Widget,"FIELDS")
@@ -1285,6 +1360,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 for currentIndex in range(self.programm_TABS.count()):
                     if self.programm_TABS.tabText(currentIndex) == "TRACK":
                         self.programm_TABS.removeTab(currentIndex)
+                        if self.programm_TABS.count() ==0: self.smilei_icon_BUTTON.show()
                         self.onRemoveTrack()
             else:
                 self.programm_TABS.addTab(self.track_Widget,"TRACK")
@@ -1300,11 +1376,14 @@ class MainWindow(QtWidgets.QMainWindow):
                 for currentIndex in range(self.programm_TABS.count()):
                     if self.programm_TABS.tabText(currentIndex) == "PLASMA":
                         self.programm_TABS.removeTab(currentIndex)
+                        print(self.programm_TABS.count)
+                        if self.programm_TABS.count() ==0: self.smilei_icon_BUTTON.show()
                         self.onRemovePlasma()
             else:
+                self.smilei_icon_BUTTON.hide()
                 self.programm_TABS.addTab(self.plasma_Widget,"PLASMA")
                 self.programm_TABS.show()
-                self.smilei_icon_BUTTON.hide()
+
                 if self.INIT_tabPlasma != None: self.INIT_tabPlasma = True
                 self.INIT_tabPlasma = True
                 app.processEvents()
@@ -1315,6 +1394,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 for currentIndex in range(self.programm_TABS.count()):
                     if self.programm_TABS.tabText(currentIndex) == "COMPA":
                         self.programm_TABS.removeTab(currentIndex)
+                        if self.programm_TABS.count() ==0: self.smilei_icon_BUTTON.show()
                         self.onRemoveCompa()
             else:
                 self.programm_TABS.addTab(self.compa_Widget,"COMPA")
@@ -1330,6 +1410,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 for currentIndex in range(self.programm_TABS.count()):
                     if self.programm_TABS.tabText(currentIndex) == "BINNING":
                         self.programm_TABS.removeTab(currentIndex)
+                        if self.programm_TABS.count() ==0: self.smilei_icon_BUTTON.show()
                         self.onRemoveCompa()
             else:
                 self.programm_TABS.addTab(self.binning_Widget,"BINNING")
@@ -1345,6 +1426,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 for currentIndex in range(self.programm_TABS.count()):
                     if self.programm_TABS.tabText(currentIndex) == "TORNADO":
                         self.programm_TABS.removeTab(currentIndex)
+                        if self.programm_TABS.count() ==0: self.smilei_icon_BUTTON.show()
                         self.onRemoveTornado()
             else:
                 self.programm_TABS.addTab(self.tornado_Widget,"TORNADO")
@@ -1407,7 +1489,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def onUpdateTabScalar(self, check_id, is_compa=False):
         # print("onUpdateTabScalar",check_id, is_compa)
-        if self.INIT_tabScalar == None or self.is_sim_loaded == False: return
+        if self.INIT_tabScalar == None or self.is_sim_loaded == False:
+            # self.showError("Simulation not loaded")
+            return
         self.INIT_tabScalar = False
 
         # t0 = time.perf_counter()
@@ -1561,7 +1645,9 @@ class MainWindow(QtWidgets.QMainWindow):
                     check.setEnabled(True)
 
 
-        if self.INIT_tabFields == None or self.is_sim_loaded == False: return
+        if self.INIT_tabFields == None or self.is_sim_loaded == False:
+            # self.showError("Simulation not loaded")
+            return
         if self.INIT_tabFields:
             print("===== INIT FIELDS TAB =====")
             # self.displayLoadingLabel(self.fields_groupBox)
@@ -1716,7 +1802,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def onUpdateTabTrack(self, check_id):
 
-        if self.INIT_tabFields == None or self.is_sim_loaded == False: return
+        if self.INIT_tabFields == None or self.is_sim_loaded == False:
+            # self.showError("Simulation not loaded")
+            return
         l0 = 2*pi
         if self.INIT_tabTrack or check_id==-1: #if change of name reinit
             print("===== INIT TRACK TAB =====")
@@ -1865,7 +1953,7 @@ class MainWindow(QtWidgets.QMainWindow):
         vmax_ptheta = 0.005
 
         #=====================================
-        # REMOVE ALL FIGURES --> NOT OPTIMAL !
+        # REMOVE ALL AXES --> NOT OPTIMAL !
         #=====================================
         if len(self.figure_3.axes) !=0:
             for ax in self.figure_3.axes: ax.remove()
@@ -1897,6 +1985,10 @@ class MainWindow(QtWidgets.QMainWindow):
                     cmap = "jet"
                     vmin = 0
                     vmax = 3
+                elif "Ekin" in self.plasma_names[i]:
+                    cmap = "smilei"
+                    vmin = 0
+                    vmax = 0.1
                 else:
                     cmap = "RdYlBu"
                     vmin = -0.1*np.max(np.abs(self.plasma_data_list[k][time_idx]))
@@ -1935,7 +2027,9 @@ class MainWindow(QtWidgets.QMainWindow):
                     check.setEnabled(True)
 
 
-        if self.INIT_tabPlasma == None or self.is_sim_loaded == False: return
+        if self.INIT_tabPlasma == None or self.is_sim_loaded == False:
+            # self.showError("Simulation not loaded")
+            return
         if self.INIT_tabPlasma:
             l0 = 2*pi
             plasma_species_exist = "eon" in [s.name for s in self.S.namelist.Species]
@@ -1980,7 +2074,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.updateInfoLabelMem()
 
         l0 = 2*pi
-        if check_id < 10: #CHECK_BOX UPDATE
+        if check_id < 20: #CHECK_BOX UPDATE
             #=====================================
             # REMOVE ALL FIGURES --> NOT OPTIMAL
             #=====================================
@@ -2058,7 +2152,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
     def call_compa_ThreadGetPlasmaProbeData(self, check_id):
-        if not self.is_sim_loaded: return
+        if not self.is_sim_loaded:
+            # self.showError("Simulation not loaded")
+            return
         boolList = [check.isChecked() for check in self.compa_plasma_check_list]
 
         self.figure_4_plasma.clf()
@@ -2156,7 +2252,9 @@ class MainWindow(QtWidgets.QMainWindow):
         return
 
     def onUpdateTabCompaPlasma(self, check_id):
-        if self.INIT_tabPlasma == None or self.is_sim_loaded == False: return
+        if self.INIT_tabPlasma == None or self.is_sim_loaded == False:
+            # self.showError("Simulation not loaded")
+            return
         if self.INIT_tabPlasma:
             l0 = 2*pi
             Bx_long_diag = self.S.Probe(2,"Bx")
@@ -2269,110 +2367,190 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def onUpdateTabCompa(self, box_idx):
         if box_idx==0:
-            self.compa_plasma_groupBox.hide()
-            self.canvas_4_plasma.hide()
             self.compa_scalar_groupBox.show()
             self.canvas_4_scalar.show()
-        else:
+            self.compa_plasma_groupBox.hide()
+            self.canvas_4_plasma.hide()
+            self.compa_binning_groupBox.hide()
+            self.canvas_4_binning.hide()
+
+        elif box_idx==1:
             self.compa_scalar_groupBox.hide()
             self.canvas_4_scalar.hide()
             self.compa_plasma_groupBox.show()
             self.canvas_4_plasma.show()
+            self.compa_binning_groupBox.hide()
+            self.canvas_4_binning.hide()
+        else:
+            self.compa_scalar_groupBox.hide()
+            self.canvas_4_scalar.hide()
+            self.compa_plasma_groupBox.hide()
+            self.canvas_4_plasma.hide()
+            self.compa_binning_groupBox.show()
+            self.canvas_4_binning.show()
         return
 
 
-    def onUpdateTabBinning(self, id):
+    def onUpdateTabBinning(self, id, is_compa=False):
+        if not self.is_sim_loaded:
+            # self.showError("Simulation not loaded")
+            return
+        if is_compa and not self.is_compa_sim_loaded:
+            self.showError("2nd simulation not loaded")
+            return
 
-        if not self.is_sim_loaded: return
+        if not is_compa:
+            canvas = self.canvas_5
+            diag_name = self.binning_diag_name_EDIT.text()
+            time_slider = self.binning_time_SLIDER
+        else:
+            canvas = self.canvas_4_binning
+            diag_name = self.compa_binning_diag_name_EDIT.text()
+            time_slider = self.compa_binning_time_SLIDER
+
+        figure = canvas.figure
 
         if id == 0:
-            self.figure_5.clf()
-            self.ax5 = self.figure_5.add_subplot(1,1,1)
+            figure.clf()
 
-            self.ax5.grid()
-
-            diag_name = self.binning_diag_name_EDIT.text()
             diag_name_list = diag_name.replace(" ", "").split(",")
-            print("Binning diag:",diag_name_list)
+            if is_compa: diag_name_list = diag_name_list[0:1] #cannot use multiple diag when comparing
+            print("Binning diag:",diag_name_list, "| is_compa:",is_compa)
+            ax = figure.add_subplot(1,1,1) #Assume single ax figure
+
             for diag_name in diag_name_list:
                 try:
                     diag = self.S.ParticleBinning(diag_name)
+                    binning_data = np.array(diag.getData())
+
+                    if is_compa:
+                        diag2 = self.compa_S.ParticleBinning(diag_name)
+                        binning_data2 = np.array(diag2.getData())
+
                 except IndexError:
                     self.showError(f'No ParticleBinning diagnostic "{diag_name}" found')
                     return
 
                 t_range = diag.getTimes()
-                self.binning_time_SLIDER.setMaximum(len(t_range)-1)
+                time_slider.setMaximum(len(t_range)-1)
+                time_slider.setValue(len(t_range)-1)
                 time_idx = -1
+                if not is_compa:
+                    self.binning_t_range = t_range
+                else:
+                    self.compa_binning_t_range = t_range
 
-                self.binning_data = np.array(diag.getData())
-                if self.binning_data.ndim == 1: # function of time only
-                        self.binning_image, = self.ax5.plot(t_range/self.l0,self.binning_data, label=diag_name)                
-                        self.ax5.set_xlabel("t/t0")
-                elif self.binning_data.ndim == 2:
+                if binning_data.ndim == 1: # function of time only
+                    binning_image, = ax.plot(t_range/self.l0,binning_data, label=diag_name)
+                    ax.set_xlabel("t/t0")
+                    if is_compa: binning_image_compa, = ax.plot(t_range/self.l0,binning_data2, label=diag_name+"_compa")
+                elif binning_data.ndim == 2:
                     x_range = np.array(diag.getAxis(diag_name))
-
-                    self.ax5.set_xlabel(diag_name)
-                    self.ax5.set_ylabel("weight")
                     if diag_name == "ekin":
-                        self.binning_image, = self.ax5.plot(x_range,self.binning_data[time_idx], label=diag_name)
-                        self.ax5.set_xscale("log")
-                        self.ax5.set_yscale("log")
-                    elif diag_name =="Lx_x":
-                        x_range = np.array(diag.getAxis("x"))
-                        self.ax5.set_xlabel("$x/\lambda$")
-                        self.ax5.set_ylabel("$L_x$")
-                        self.binning_image, = self.ax5.plot(x_range/self.l0,self.binning_data[time_idx], label=diag_name)
-                    else:
-                        self.binning_image, = self.ax5.plot(x_range/self.l0,self.binning_data[time_idx], label=diag_name)
+                        binning_image, = ax.plot(x_range,binning_data[time_idx], label=diag_name)
+                        ax.set_xscale("log")
+                        ax.set_yscale("log")
+                        if is_compa: binning_image2, = ax.plot(x_range,binning_data2[time_idx], label=diag_name+"_compa")
 
-                elif self.binning_data.ndim == 3:
+                    elif diag_name =="Lx_x" or diag_name =="Lx_x_av":
+                        x_range = np.array(diag.getAxis("x"))
+                        ax.set_xlabel("$x/\lambda$")
+                        ax.set_ylabel("$L_x$")
+                        binning_image, = ax.plot(x_range/self.l0,binning_data[time_idx], label=diag_name)
+                        if is_compa: binning_image2, = ax.plot(x_range/self.l0,binning_data2[time_idx], label=diag_name+"_compa")
+                    else:
+                        binning_image, = ax.plot(x_range/self.l0,binning_data[time_idx], label=diag_name)
+                        if is_compa: binning_image2, = ax.plot(x_range/self.l0,binning_data2[time_idx], label=diag_name+"_compa")
+                        ax.set_xlabel(diag_name)
+                        ax.set_ylabel("weight")
+                        print(diag_name)
+                elif binning_data.ndim == 3:
+                    if is_compa:
+                        figure.clf() #dont use single ax figure
+                        ax = figure.add_subplot(1,2,1)
+                        ax2 = figure.add_subplot(1,2,2)
+                        ax.set_title(self.sim_directory_name)
+                        ax2.set_title(self.compa_sim_directory_name)
+
                     if diag_name =="phase_space":
-                        self.ax5.cla()
                         x_range  = diag.getAxis("x")
                         px_range = diag.getAxis("px")
                         extent = [x_range[0]/self.l0,x_range[-1]/self.l0,px_range[0],px_range[-1]]
-                        self.binning_image = self.ax5.imshow(self.binning_data[time_idx].T, extent=extent, cmap="smilei",aspect="auto", origin="lower")
-                        self.ax5.set_xlabel("$x/\lambda$")
-                        self.ax5.set_ylabel("px")
-                        # self.binning_colorbar.remove()
-                        self.binning_colorbar = self.figure_5.colorbar(self.binning_image, ax=self.ax5, pad=0.01)
+                        binning_image = ax.imshow(binning_data[time_idx].T, extent=extent, cmap="smilei",aspect="auto", origin="lower")
+                        if is_compa: binning_image2 = ax2.imshow(binning_data2[time_idx].T, extent=extent, cmap="smilei",aspect="auto", origin="lower")
+                        ax.set_xlabel("$x/\lambda$")
+                        ax.set_ylabel("px")
                         break
                     if diag_name =="phase_space_Lx":
-                        self.ax5.cla()
                         x_range  = diag.getAxis("x")
                         px_range = diag.getAxis("user_function0")
                         extent = [x_range[0]/self.l0,x_range[-1]/self.l0,px_range[0],px_range[-1]]
-                        self.binning_image = self.ax5.imshow(self.binning_data[time_idx].T, extent=extent, cmap="smilei",aspect="auto", origin="lower")
-                        self.ax5.set_xlabel("$x/\lambda$")
-                        self.ax5.set_ylabel("Lx")
-                        # self.binning_colorbar.remove()
-                        self.binning_colorbar = self.figure_5.colorbar(self.binning_image, ax=self.ax5, pad=0.01)
+                        binning_image = ax.imshow(binning_data[time_idx].T, extent=extent, cmap="smilei",aspect="auto", origin="lower")
+                        if is_compa: binning_image2 = ax2.imshow(binning_data2[time_idx].T, extent=extent, cmap="smilei",aspect="auto", origin="lower")
+                        ax.set_xlabel("$x/\lambda$")
+                        ax.set_ylabel("Lx")
                         break
-            self.ax5.legend()
-            self.ax5.relim()            # Recompute the limits
-            self.ax5.autoscale_view()   # Apply the new limits
-            self.figure_5.tight_layout()
-            self.canvas_5.draw()
-        elif id == 100:
-            time_idx = self.binning_time_SLIDER.sliderPosition()
-            print(time_idx,self.binning_data[time_idx].shape)
-            if self.binning_data.ndim == 1: return
-            elif self.binning_data.ndim == 2:
-                self.binning_image.set_ydata(self.binning_data[time_idx])
+
+            self.binning_colorbar = figure.colorbar(binning_image, ax=ax, pad=0.01)
+            if is_compa: self.binning_colorbar2 = figure.colorbar(binning_image2, ax=ax2, pad=0.01)
+
+
+            if is_compa:
+                self.compa_binning_image = binning_image
+                self.compa_binning_data = binning_data
+
+                self.compa_binning_image2 = binning_image2
+                self.compa_binning_data2 = binning_data2
+
             else:
-                self.binning_image.set_data(self.binning_data[time_idx].T)
-            self.ax5.legend()
-            self.ax5.relim()            # Recompute the limits based on current data
-            self.ax5.autoscale_view()   # Apply the new limits
-            self.figure_5.tight_layout()
-            self.canvas_5.draw()
+                self.binning_image = binning_image
+                self.binning_data = binning_data
+            for ax in figure.axes:
+                if ax.get_label()!='<colorbar>':
+                    ax.grid()
+                    ax.legend()
+                    ax.relim()            # Recompute the limits
+                    ax.autoscale_view()   # Apply the new limits
+            figure.suptitle(f"t = {t_range[time_idx]/self.l0:.2f} $t_0$")
+            figure.tight_layout()
+            canvas.draw()
+            return
+
+        elif id == 100:
+            if is_compa:
+                binning_image = self.compa_binning_image
+                binning_data = self.compa_binning_data
+
+                binning_image2 = self.compa_binning_image2
+                binning_data2 = self.compa_binning_data2
+
+                time_idx = self.compa_binning_time_SLIDER.sliderPosition()
+                t_range = self.compa_binning_t_range
+            else:
+                binning_image = self.binning_image
+                binning_data = self.binning_data
+                time_idx = self.binning_time_SLIDER.sliderPosition()
+                t_range = self.binning_t_range
+
+            if binning_data.ndim == 1: return
+
+            elif binning_data.ndim == 2:
+                binning_image.set_ydata(binning_data[time_idx])
+                if is_compa: binning_image2.set_ydata(binning_data2[time_idx])
+            else:
+                binning_image.set_data(binning_data[time_idx].T)
+                if is_compa: binning_image2.set_data(binning_data2[time_idx].T)
+
+        figure.suptitle(f"t = {t_range[time_idx]/self.l0:.2f} $t_0$")
+        canvas.draw()
+        return
 
 
 
 
     def onCloseProgressBar(self, sim_id_int):
-
+        print("REMOVE PROGRESS BAR LAYOUT", sim_id_int)
+        print("finished sim:",self.finished_sim_hist)
         self.finished_sim_hist.remove(sim_id_int)
         layout_to_del = self.layout_progress_bar_dict[str(sim_id_int)]
         # print("to del:",layout_to_del)
@@ -2399,10 +2577,13 @@ class MainWindow(QtWidgets.QMainWindow):
         #================================
         # CHECK FOR FINISHED SIMULATIONS
         #================================
+        print("previous sim dict:",list(self.previous_sim_dict)[:-1],"\n")
         if (CURRENT_NB_SIM_RUNNING <= OLD_NB_SIM_RUNNING) and (list(self.sim_dict) != list(self.running_sim_hist)): #AT LEAST ONE SIMULATION HAS FINISHED
-            for n,old_sim_id_int in enumerate(self.running_sim_hist):
+            running_sim_hist = np.copy(self.running_sim_hist)
+            for n,old_sim_id_int in enumerate(running_sim_hist):
+                print(n,old_sim_id_int)
                 if str(old_sim_id_int) not in list(self.sim_dict): #this simulation has finished
-                    print("previous sim dict:",self.previous_sim_dict)
+                    print(old_sim_id_int,"not in", list(self.sim_dict))
                     finished_sim_path = self.previous_sim_dict[str(old_sim_id_int)]["job_full_path"]
                     finished_sim_name = self.previous_sim_dict[str(old_sim_id_int)]["job_full_name"]
                     print(finished_sim_path,"download is available ! \a") #\a
@@ -2415,7 +2596,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     layout = self.layout_progress_bar_dict[str(old_sim_id_int)]
                     progress_bar = layout.itemAt(2).widget()
                     ETA_LABEL = layout.itemAt(3).widget()
-                    dl_sim_BUTTON = layout.itemAt(4).widget()
+                    dl_sim_BUTTON = layout.itemAt(5).widget()
 
                     progress_bar.setStyleSheet(self.qss_progressBar_COMPLETED)
                     progress_bar.setValue(100)
@@ -2429,8 +2610,11 @@ class MainWindow(QtWidgets.QMainWindow):
                     close_BUTTON.setIcon(QtGui.QIcon(os.environ["SMILEI_QT"]+"\\Ressources\\close_button_trans.png"))
                     close_BUTTON.setIconSize(QtCore.QSize(25, 25))
                     close_BUTTON.setStyleSheet("border-radius:0px; border:0px")
-                    close_BUTTON.clicked.connect(lambda: self.onCloseProgressBar(old_sim_id_int))
+                    close_BUTTON.clicked.connect(partial(self.onCloseProgressBar,old_sim_id_int))
                     layout.addWidget(close_BUTTON)
+                else:
+                    finished_sim_path = self.sim_dict[str(old_sim_id_int)]["job_full_path"]
+                    self.can_download_sim_dict[int(old_sim_id_int)] = finished_sim_path #Still allow to be downloaded !
         #================================
         # CHECK FOR NEW SIMULATIONS
         # OR UPDATE CURRENT ONE
@@ -2443,10 +2627,12 @@ class MainWindow(QtWidgets.QMainWindow):
             sim_ETA = sim["ETA"].rjust(5)
             sim_name = sim["job_full_name"][:-3]
             sim_nodes = int(sim["NODES"])
+            sim_push_time = sim["push_time"]
+
 
             if (sim_id_int not in self.running_sim_hist) and (sim_id_int not in self.finished_sim_hist):
 
-                layoutProgressBar = self.createLayoutProgressBar(sim_id, sim_progress, sim_name, sim_nodes, sim_ETA)
+                layoutProgressBar = self.createLayoutProgressBar(sim_id, sim_progress, sim_name, sim_nodes, sim_ETA, sim_push_time)
                 self.layout_progress_bar_dict[sim_id] = layoutProgressBar
 
                 item_count = self.layoutTornado.count()
@@ -2464,6 +2650,11 @@ class MainWindow(QtWidgets.QMainWindow):
                 progress_bar.setValue(round(sim_progress))
                 ETA_label = self.layout_progress_bar_dict[sim_id].itemAt(3).widget()
                 ETA_label.setText(sim_ETA)
+                push_time_label = self.layout_progress_bar_dict[sim_id].itemAt(4).widget()
+                if sim_push_time > 10_000:
+                    push_time_label.setStyleSheet("color: red")
+                push_time_label.setText(str(sim_push_time)+"ns")
+
         #Update label with Update datetime
         sim_datetime = self.sim_dict["datetime"]
         self.tornado_last_update_LABEL.setText(f"Last updated: {sim_datetime}")
@@ -2483,34 +2674,71 @@ class MainWindow(QtWidgets.QMainWindow):
         print("===========================")
         print("downloading request for", sim_id,job_full_path)
 
+
+
+        host = "llrlsi-gw.in2p3.fr"
+        user = "jeremy"
+        with open('tornado_pwdfile.txt', 'r') as f: password = f.read()
+        remote_path = "/sps3/jeremy/LULI/"
+        ssh_key_filepath = r"C:\Users\jerem\.ssh\id_rsa.pub"
+        remote_path = "/sps3/jeremy/LULI/"
+
+        remote_client = paramiko_SSH_SCP_class.RemoteClient(host,user,password,ssh_key_filepath,remote_path)
+        res = remote_client.execute_commands([f"du {job_full_path}"])
+        total_size = int(res[0].split()[0])
+
+        tornado_download_TIMER = QtCore.QTimer()
+        refresh_time_s = 2 #s
+        tornado_download_TIMER.setInterval(int(refresh_time_s*1000)) #in ms
+        tornado_download_TIMER.timeout.connect(partial(self.onUpdateDownloadBar,total_size, job_full_path, sim_id))
+        tornado_download_TIMER.start()
+
         self.loadthread = class_threading.ThreadDownloadSimData(job_full_path)
-        self.loadthread.finished.connect(lambda:self.onDownloadSimDataFinished(sim_id))
+        self.loadthread.finished.connect(partial(self.onDownloadSimDataFinished,sim_id, tornado_download_TIMER))
         self.loadthread.start()
 
         layout = self.layout_progress_bar_dict[str(sim_id)]
         # progress_bar = layout.itemAt(2).widget()
         ETA_label = layout.itemAt(3).widget()
-        dl_sim_BUTTON = layout.itemAt(4).widget()
+        dl_sim_BUTTON = layout.itemAt(5).widget()
         dl_sim_BUTTON.setStyleSheet("border-color: orange")
         dl_sim_BUTTON.setEnabled(False)
+        close_sim_BUTTON = layout.itemAt(6).widget()
+        close_sim_BUTTON.setEnabled(False)
         ETA_label.setText("DL")
         return
+    def onUpdateDownloadBar(self, total_size, job_full_path, sim_id):
+        general_folder_name = job_full_path[18:]
+        local_folder = os.environ["SMILEI_CLUSTER"]
+        local_sim_path = f"{local_folder}\\{general_folder_name}"
 
-    def onDownloadSimDataFinished(self,sim_id):
+        size = sum([os.path.getsize(f"{local_sim_path}\{f}") for f in os.listdir(local_sim_path)])
+        prc = round(size/(total_size*1024)*100)
+        print("tornado download:",prc,"%")
+        layout = self.layout_progress_bar_dict[str(sim_id)]
+        progress_bar = layout.itemAt(2).widget()
+        progress_bar.setValue(prc)
+        return
+
+    def onDownloadSimDataFinished(self,sim_id, tornado_download_TIMER):
+        tornado_download_TIMER.stop()
         layout = self.layout_progress_bar_dict[str(sim_id)]
         progress_bar = layout.itemAt(2).widget()
         ETA_label = layout.itemAt(3).widget()
-        dl_sim_BUTTON = layout.itemAt(4).widget()
-
+        dl_sim_BUTTON = layout.itemAt(5).widget()
+        close_sim_BUTTON = layout.itemAt(6).widget()
         dl_sim_BUTTON.setStyleSheet("border-color: green")
         dl_sim_BUTTON.setEnabled(False)
-        ETA_label.setText("DL")
+        close_sim_BUTTON.setEnabled(True)
+        ETA_label.setPixmap(QtGui.QIcon(os.environ["SMILEI_QT"]+"\\Ressources\\check_mark_icon.png")) #green check
+        ETA_label.setStyleSheet("background-color: #80ef80")
         progress_bar.setStyleSheet(self.qss_progressBar_DOWNLOADED)
 
         print(sim_id,"download is finished ! \a") #\a
         self.showToast('Tornado download is finished', sim_id,ToastPreset.INFORMATION)
 
         return
+
 
     def onInitTabTornado(self):
         if self.INIT_tabTornado == None: return
@@ -2543,10 +2771,11 @@ class MainWindow(QtWidgets.QMainWindow):
                 sim_ETA = sim["ETA"].rjust(5)
                 sim_name = sim["job_full_name"][:-3]
                 sim_nodes = int(sim["NODES"])
+                sim_push_time = sim["push_time"]
 
                 self.running_sim_hist.append(int(sim_id))
 
-                layoutProgressBar = self.createLayoutProgressBar(sim_id, sim_progress, sim_name, sim_nodes, sim_ETA)
+                layoutProgressBar = self.createLayoutProgressBar(sim_id, sim_progress, sim_name, sim_nodes, sim_ETA, sim_push_time)
 
                 self.layout_progress_bar_dict[sim_id] = layoutProgressBar
                 self.layoutTornado.addLayout(layoutProgressBar)
@@ -2560,7 +2789,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.call_ThreadDownloadSimJSON()
             app.processEvents()
 
-    def createLayoutProgressBar(self, sim_id, sim_progress, sim_name, sim_nodes, sim_ETA):
+    def createLayoutProgressBar(self, sim_id, sim_progress, sim_name, sim_nodes, sim_ETA, sim_push_time):
         layoutProgressBar = QtWidgets.QHBoxLayout()
 
         tornado_PROGRESS_BAR = QtWidgets.QProgressBar(maximum=100)
@@ -2568,24 +2797,31 @@ class MainWindow(QtWidgets.QMainWindow):
         tornado_PROGRESS_BAR.setFont(QFont('Arial', 15))
         tornado_PROGRESS_BAR.setAlignment(QtCore.Qt.AlignCenter)
 
-        custom_FONT = QtGui.QFont("Courier New", 14,QFont.Bold)
+        custom_bold_FONT = QtGui.QFont("Courier New", 14,QFont.Bold)
+        custom_FONT = QtGui.QFont("Courier New", 12)
 
         sim_name_LABEL = QtWidgets.QLabel(f"[{sim_id}] {sim_name}")
-        sim_name_LABEL.setFont(custom_FONT)
-        sim_name_LABEL.setMinimumWidth(650) #450 FOR LAPTOP
+        sim_name_LABEL.setFont(custom_bold_FONT)
+        sim_name_LABEL.setMinimumWidth(475) #450 FOR LAPTOP
         sim_name_LABEL.setStyleSheet("background-color: lightblue")
         sim_name_LABEL.setWordWrap(True)
         sim_name_LABEL.setAlignment(QtCore.Qt.AlignCenter)
 
         sim_node_LABEL = QtWidgets.QLabel(f"NDS:{sim_nodes}")
-        sim_node_LABEL.setFont(custom_FONT)
+        sim_node_LABEL.setFont(custom_bold_FONT)
         sim_node_LABEL.setStyleSheet("background-color: lightblue")
 
         ETA_LABEL = QtWidgets.QLabel(sim_ETA)
-        ETA_LABEL.setFont(custom_FONT)
+        ETA_LABEL.setFont(custom_bold_FONT)
         ETA_LABEL.setStyleSheet("background-color: lightblue")
         # ETA_LABEL.setAlignment(QtCore.Qt.AlignCenter)
         ETA_LABEL.setMinimumWidth(75)
+
+        push_time_LABEL = QtWidgets.QLabel(str(sim_push_time)+"ns")
+        if sim_push_time > 10_000:
+            push_time_LABEL.setStyleSheet("color: red")
+        push_time_LABEL.setFont(custom_FONT)
+        push_time_LABEL.setMinimumWidth(75)
 
         dl_sim_BUTTON = QtWidgets.QPushButton()
         dl_sim_BUTTON.setIcon(QtGui.QIcon(os.environ["SMILEI_QT"]+"\\Ressources\\download_button.png"))
@@ -2598,6 +2834,7 @@ class MainWindow(QtWidgets.QMainWindow):
         layoutProgressBar.addWidget(sim_node_LABEL)
         layoutProgressBar.addWidget(tornado_PROGRESS_BAR)
         layoutProgressBar.addWidget(ETA_LABEL)
+        layoutProgressBar.addWidget(push_time_LABEL)
         layoutProgressBar.addWidget(dl_sim_BUTTON)
 
         layoutProgressBar.setContentsMargins(25,20,25,20) #left top right bottom
@@ -2649,6 +2886,18 @@ class MainWindow(QtWidgets.QMainWindow):
         d=(decimal.Decimal(str(x))*shift).normalize()
         m,e=d.to_eng_string().split('E')
         return m[:4] + " " + prefix[int(e)//3] + baseunit
+
+    def getSimRunTime(self, sim_path):
+        with open(sim_path+"\\log") as f:
+            text = f.readlines()
+            for i, line in enumerate(text):
+                if "push time [ns]" in line:
+                    pt = int(np.mean([int(text[i+n].split()[-1]) for n in range(1,40)]))
+                    print("-----------------")
+                if "Time_in_time_loop" in line:
+                    run_time = float(line.split()[1])
+        return run_time, pt
+
 
 class ProxyStyle(QtWidgets.QProxyStyle):
     """Overwrite the QSlider: left click place the cursor at cursor position"""

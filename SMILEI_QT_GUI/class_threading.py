@@ -15,6 +15,8 @@ import os
 import numpy as np
 import time
 from scipy import integrate
+import glob
+
 class ThreadDownloadSimJSON(QtCore.QThread):
     def __init__(self, file_path, local_folder, parent=None):
         super(QtCore.QThread, self).__init__()
@@ -23,7 +25,7 @@ class ThreadDownloadSimJSON(QtCore.QThread):
     finished = pyqtSignal()
     progress = pyqtSignal(int)
     def downloadSimJSON(self, file_path, local_folder):
-        print("download JSON TRND")
+        print("THREAD downloadSimJSON")
         host = "llrlsi-gw.in2p3.fr"
         user = "jeremy"
         with open('tornado_pwdfile.txt', 'r') as f: password = f.read()
@@ -45,10 +47,17 @@ class ThreadDownloadSimData(QtCore.QThread):
     finished = pyqtSignal()
     progress = pyqtSignal(int)
     def downloadSimData(self, job_full_path):
-        print("-----------------------------")
+        print("THREAD downloadSimData")
         general_folder_name = job_full_path[18:]
         local_folder = os.environ["SMILEI_CLUSTER"]
         local_cluster_folder = f"{local_folder}\\{general_folder_name}"
+
+
+        files = glob.glob(f'{local_cluster_folder}\\*')
+        for f in files:
+            print("removed",f)
+            os.remove(f)
+
         Path(local_cluster_folder).mkdir(parents=True, exist_ok=True)
         print(f"Downloading in {local_cluster_folder}")
         host = "llrlsi-gw.in2p3.fr"
@@ -80,6 +89,7 @@ class ThreadGetFieldsProbeData(QtCore.QThread):
     finished = pyqtSignal(list)
 
     def getFieldsProbeData(self, boolList, fields_names, S, fields_t_range, fields_paxisX, fields_paxisY, fields_paxisZ):
+        print("THREAD getFieldsProbeData")
         fields_data_list = []
         for i in range(len(fields_names)):
             if boolList[i]:
@@ -125,60 +135,59 @@ class ThreadGetPlasmaProbeData(QtCore.QThread):
     finished = pyqtSignal(list)
 
     def getPlasmaProbeData(self, S, selected_plasma_names):
+        print("THREAD getPlasmaProbeData")
         plasma_data_list = []
 
-        t0 = time.perf_counter()
+        # t0 = time.perf_counter()
         ne = S.namelist.ne
         toTesla = 10709
-
-        sim_path = S._results_path[0]
         for i in range(len(selected_plasma_names)):
             if selected_plasma_names[i] == "Bx":
                 Bx_long_diag = S.Probe("long","Bx")
-                print(f"Bx_long",np.array(Bx_long_diag.getData()).shape)
-                data = np.array(Bx_long_diag.getData())*toTesla
-                plasma_data_list.append(data)
-                np.savez(f"{sim_path}/plasma_{selected_plasma_names[i]}.npz", t_range=Bx_long_diag.getTimes(), data=data)
+                # print(f"Bx_long",np.array(Bx_long_diag.getData()).shape)
+                plasma_data_list.append(np.array(Bx_long_diag.getData())*toTesla)
+                # np.savez(f"{sim_path}/plasma_{selected_plasma_names[i]}.npz", t_range=Bx_long_diag.getTimes(), data=data)
             elif selected_plasma_names[i] == "Bx_trans":
                 Bx_trans_diag = S.Probe("trans","Bx")
-                print("Bx_trans",np.array(Bx_trans_diag.getData()).shape)
-                data = np.array(Bx_trans_diag.getData())*toTesla
-                plasma_data_list.append(data)
-                np.savez(f"{sim_path}/plasma_{selected_plasma_names[i]}.npz", t_range=Bx_trans_diag.getTimes(), data=data)
+                # print("Bx_trans",np.array(Bx_trans_diag.getData()).shape)
+                plasma_data_list.append(np.array(Bx_trans_diag.getData())*toTesla)
+                # np.savez(f"{sim_path}/plasma_{selected_plasma_names[i]}.npz", t_range=Bx_trans_diag.getTimes(), data=data)
             elif selected_plasma_names[i] == "ne":
                 Bweight_long = S.ParticleBinning("weight")
-                print("ne",np.array(Bweight_long.getData()).shape)
-                data = np.array(Bweight_long.getData())/ne
-                plasma_data_list.append(data)
-                np.savez(f"{sim_path}/plasma_{selected_plasma_names[i]}.npz", t_range=Bweight_long.getTimes(), data=data)
+                # print("ne",np.array(Bweight_long.getData()).shape)
+                plasma_data_list.append(np.mean(np.array(Bweight_long.getData())/ne,axis=-1))
+                # np.savez(f"{sim_path}/plasma_{selected_plasma_names[i]}.npz", t_range=Bweight_long.getTimes(), data=data)
             elif selected_plasma_names[i] == "ne_trans":
                 Bweight_trans = S.ParticleBinning("weight_trans")
-                print("ne_trans",np.array(Bweight_trans.getData()).shape)
-                data = np.array(Bweight_trans.getData())/ne
-                plasma_data_list.append(data)
-                np.savez(f"{sim_path}/plasma_{selected_plasma_names[i]}.npz", t_range=Bweight_trans.getTimes(), data=data)
-
+                # print("ne_trans",np.array(Bweight_trans.getData()).shape)
+                plasma_data_list.append(np.array(Bweight_trans.getData())/ne)
+                # np.savez(f"{sim_path}/plasma_{selected_plasma_names[i]}.npz", t_range=Bweight_trans.getTimes(), data=data)
             elif selected_plasma_names[i] == "Lx":
                 BLx_long = S.ParticleBinning("Lx_W")
-                data = np.array(BLx_long.getData())
-                plasma_data_list.append(data)
-                np.savez(f"{sim_path}/plasma_{selected_plasma_names[i]}.npz", t_range=BLx_long.getTimes(), data=data)
+                plasma_data_list.append(np.mean(np.array(BLx_long.getData()),axis=-1))
+                # np.savez(f"{sim_path}/plasma_{selected_plasma_names[i]}.npz", t_range=BLx_long.getTimes(), data=data)
             elif selected_plasma_names[i] == "Lx_trans":
                 BLx_trans = S.ParticleBinning("Lx_W_trans")
-                data = np.array(BLx_trans.getData())
-                plasma_data_list.append(data)
-                np.savez(f"{sim_path}/plasma_{selected_plasma_names[i]}.npz", t_range=BLx_trans.getTimes(), data=data)
+                plasma_data_list.append(np.array(BLx_trans.getData()))
+                # np.savez(f"{sim_path}/plasma_{selected_plasma_names[i]}.npz", t_range=BLx_trans.getTimes(), data=data)
 
             elif selected_plasma_names[i] == "pθ":
                 Bptheta_long = S.ParticleBinning("ptheta_W")
-                data = np.array(Bptheta_long.getData())
-                plasma_data_list.append(data)
-                np.savez(f"{sim_path}/plasma_{selected_plasma_names[i]}.npz", t_range=Bptheta_long.getTimes(), data=data)
+                plasma_data_list.append(np.mean(np.array(Bptheta_long.getData()),axis=-1))
+                # np.savez(f"{sim_path}/plasma_{selected_plasma_names[i]}.npz", t_range=Bptheta_long.getTimes(), data=data)
             elif selected_plasma_names[i] == "pθ_trans":
                 Bptheta_trans = S.ParticleBinning("ptheta_W_trans")
-                data = np.array(Bptheta_trans.getData())
-                plasma_data_list.append(data)
-                np.savez(f"{sim_path}/plasma_{selected_plasma_names[i]}.npz", t_range=Bptheta_trans.getTimes(), data=data)
+                plasma_data_list.append(np.array(Bptheta_trans.getData()))
+                # np.savez(f"{sim_path}/plasma_{selected_plasma_names[i]}.npz", t_range=Bptheta_trans.getTimes(), data=data)
+
+            elif selected_plasma_names[i] == "Ekin":
+                BEkin_long = S.ParticleBinning("ekin_W")
+                plasma_data_list.append(np.mean(np.array(BEkin_long.getData()),axis=-1))
+                # np.savez(f"{sim_path}/plasma_{selected_plasma_names[i]}.npz", t_range=Bptheta_long.getTimes(), data=data)
+            elif selected_plasma_names[i] == "Ekin_trans":
+                BEkin_trans = S.ParticleBinning("ekin_W_trans")
+                plasma_data_list.append(np.array(BEkin_trans.getData()))
+                # np.savez(f"{sim_path}/plasma_{selected_plasma_names[i]}.npz", t_range=Bptheta_trans.getTimes(), data=data)
 
             elif selected_plasma_names[i] == "Jθ":
                 Jy_long_diag = S.Probe("long","Jy")
@@ -186,16 +195,15 @@ class ThreadGetPlasmaProbeData(QtCore.QThread):
                 Jy_long = np.array(Jy_long_diag.getData())
                 Jz_long = np.array(Jz_long_diag.getData())
                 paxisY = Jy_long_diag.getAxis("axis2")[:,1] - S.namelist.Ltrans/2
-                paxisZ = Jz_long_diag.getAxis("axis3")[:,2] - S.namelist.Ltrans/2
+                paxisZ = Jz_long_diag.getAxis("axis2")[:,2] - S.namelist.Ltrans/2 # = 0 everywhere
 
                 Y,Z = np.meshgrid(paxisY,paxisZ)
 
                 R = np.sqrt(Y**2+Z**2)
                 Jtheta_long = (Y.T*Jz_long - Z.T*Jy_long)/R.T
-                print(Jtheta_long.shape)
+                # print(Jtheta_long.shape)
                 plasma_data_list.append(Jtheta_long)
-                np.savez(f"{sim_path}/plasma_{selected_plasma_names[i]}.npz", t_range=Jy_long_diag.getTimes(), data=Jtheta_long)
-
+                # np.savez(f"{sim_path}/plasma_{selected_plasma_names[i]}.npz", t_range=Jy_long_diag.getTimes(), data=Jtheta_long)
             elif selected_plasma_names[i] == "Jθ_trans":
                 Jy_trans_diag = S.Probe("trans","Jy")
                 Jz_trans_diag = S.Probe("trans","Jz")
@@ -208,16 +216,14 @@ class ThreadGetPlasmaProbeData(QtCore.QThread):
 
                 R = np.sqrt(Y**2+Z**2)
                 Jtheta_trans = (Y*Jz_trans - Z*Jy_trans)/R
-                print(Jtheta_trans.shape)
+                # print(Jtheta_trans.shape)
                 plasma_data_list.append(Jtheta_trans)
-                np.savez(f"{sim_path}/plasma_{selected_plasma_names[i]}.npz", t_range=Jz_trans_diag.getTimes(), data=Jtheta_trans)
-
-
+                # np.savez(f"{sim_path}/plasma_{selected_plasma_names[i]}.npz", t_range=Jz_trans_diag.getTimes(), data=Jtheta_trans)
             else:
                 raise(f"{selected_plasma_names[i]} does not exist !")
 
-        t1 = time.perf_counter()
-        print(round(t1-t0,2),"s")
+        # t1 = time.perf_counter()
+        # print(round(t1-t0,2),"s")
         return plasma_data_list, selected_plasma_names
 
     def run(self):
@@ -232,8 +238,8 @@ class ThreadGetAMIntegral(QtCore.QThread):
     finished = pyqtSignal(np.ndarray)
 
     def getAMIntegral(self, S):
-
-        t0 = time.perf_counter()
+        print("THREAD getAMIntegral")
+        # t0 = time.perf_counter()
         fields_paxisX = self.S.Probe(0,"Ex").getAxis("axis1")[:,0]
         fields_paxisY = self.S.Probe(0,"Ex").getAxis("axis2")[:,1]-self.S.namelist.Ltrans/2
         fields_paxisZ = self.S.Probe(0,"Ex").getAxis("axis3")[:,2]-self.S.namelist.Ltrans/2
@@ -245,13 +251,11 @@ class ThreadGetAMIntegral(QtCore.QThread):
         By = np.array(self.S.Probe(0,"By").getData()).astype(np.float32)
         Bz = np.array(self.S.Probe(0,"Bz").getData()).astype(np.float32)
 
-        # print(Ex.shape)
         AM_data = Y*(Ex*By-Ey*Bx)-Z*(Ez*Bx-Ex*Bz)
         AM_trans_int = integrate.simpson(integrate.simpson(AM_data[:,:,:,:],x=fields_paxisZ,axis=-1),x=fields_paxisY,axis=-1)
         AM_full_int = integrate.simpson(AM_trans_int,x=fields_paxisX,axis=-1)
 
-        t1 = time.perf_counter()
-        print(round(t1-t0,2),"s")
+        # t1 = time.perf_counter()
         return AM_full_int
 
     def run(self):
