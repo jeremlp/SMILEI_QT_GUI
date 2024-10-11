@@ -202,7 +202,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.MEMORY = psutil.virtual_memory
         self.DISK = psutil.disk_usage(os.environ["SMILEI_CLUSTER"])
-        self.SCRIPT_VERSION ='0.10.1 "Binning Compa & Trnd download"'
+        self.SCRIPT_VERSION ='0.10.3 "Binning Compa & Trnd download"'
         self.COPY_RIGHT = "Jeremy LA PORTE"
         self.spyder_default_stdout = sys.stdout
 
@@ -892,10 +892,12 @@ class MainWindow(QtWidgets.QMainWindow):
         settings_width = self.settings_groupBox.geometry().width()
         window_width = self.geometry().width()
         logo_width = window_width-settings_width
-        self.SMILEI_ICON_LABEL = QtGui.QIcon(os.environ["SMILEI_QT"]+"\\Ressources\\Smilei_GUI_logo_V3.png") #CUSTOM GUI LOGO
+        self.SMILEI_ICON_LABEL = QtGui.QIcon(os.environ["SMILEI_QT"]+"\\Ressources\\smilei_gui_svg_v3.png") #CUSTOM GUI LOGO
+
         self.smilei_icon_BUTTON = QtWidgets.QPushButton(self.programm_TABS)
+        self.smilei_icon_BUTTON.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         self.smilei_icon_BUTTON.setIcon(self.SMILEI_ICON_LABEL)
-        self.smilei_icon_BUTTON.setIconSize(QtCore.QSize(int(logo_width/1.3),int(logo_width*3/8/1.3))) # 800 x 300
+        self.smilei_icon_BUTTON.setIconSize(QtCore.QSize(int(logo_width/1.5),int(logo_width*3/8/1.5))) # 800 x 300
         # self.smilei_icon_BUTTON.setIconSize(QtCore.QSize(10,10)) # 800 x 300
 
         self.smilei_icon_BUTTON.setStyleSheet("QPushButton { border: none; }")
@@ -1198,7 +1200,7 @@ class MainWindow(QtWidgets.QMainWindow):
         run_time, push_time = self.getSimRunTime(self.S._results_path[0])
         NODES = self.S.namelist.smilei_mpi_size//2
 
-        self.run_time_LABEL.setText(f"{(run_time/60)//60:.0f}h{(run_time/60)%60:0>2.0f} /{NODES} nds ({push_time:.0f} ns)")
+        self.run_time_LABEL.setText(f"{(run_time/60)//60:.0f}h{(run_time/60)%60:0>2.0f} | {NODES} nds ({push_time:.0f} ns)")
 
 
         self.intensity_SI = (self.a0/0.85)**2 *10**18 #W/cm^2
@@ -1243,14 +1245,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.Uelm_tot_end = self.S.Scalar("Uelm").getData()[-1]
         self.Ukin_tot_end = self.S.Scalar("Ukin").getData()[-1]
 
-        me = 9.1093837*10**-31
-        e = 1.60217663*10**-19
-        c = 299792458
-        eps0 = 8.854*10**-12
-        wr = 2*pi*c/1e-6
-        K = me*c**2
-        N = eps0*me*wr**2/e**2
-        L = c/wr
         self.KNL3 = K*N*L**3
 
         self.INIT_tabScalar = True
@@ -1328,6 +1322,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if tab_name == "COMPA":
             self.actionDiagCompa.setChecked(False)
             self.onRemoveCompa()
+            self.onRemovePlasma()
         # print(self.programm_TABS.count())
         if self.programm_TABS.count() ==0:
             self.smilei_icon_BUTTON.show()
@@ -1344,6 +1339,7 @@ class MainWindow(QtWidgets.QMainWindow):
                         self.onRemoveScalar()
             else:
                 self.programm_TABS.addTab(self.scalar_Widget,"SCALAR")
+                self.programm_TABS.setCurrentIndex(self.programm_TABS.count()-1)
                 self.programm_TABS.show()
                 self.smilei_icon_BUTTON.hide()
                 # self.smilei_icon_BUTTON.deleteLater()
@@ -1360,6 +1356,7 @@ class MainWindow(QtWidgets.QMainWindow):
                         self.onRemoveFields()
             else:
                 self.programm_TABS.addTab(self.fields_Widget,"FIELDS")
+                self.programm_TABS.setCurrentIndex(self.programm_TABS.count()-1)
                 self.programm_TABS.show()
                 self.smilei_icon_BUTTON.hide()
                 self.INIT_tabFields = True
@@ -1375,6 +1372,7 @@ class MainWindow(QtWidgets.QMainWindow):
                         self.onRemoveTrack()
             else:
                 self.programm_TABS.addTab(self.track_Widget,"TRACK")
+                self.programm_TABS.setCurrentIndex(self.programm_TABS.count()-1)
                 self.programm_TABS.show()
                 self.smilei_icon_BUTTON.hide()
                 if self.INIT_tabTrack != None: self.INIT_tabTrack = True
@@ -1393,6 +1391,7 @@ class MainWindow(QtWidgets.QMainWindow):
             else:
                 self.smilei_icon_BUTTON.hide()
                 self.programm_TABS.addTab(self.plasma_Widget,"PLASMA")
+                self.programm_TABS.setCurrentIndex(self.programm_TABS.count()-1)
                 self.programm_TABS.show()
 
                 if self.INIT_tabPlasma != None: self.INIT_tabPlasma = True
@@ -1409,6 +1408,7 @@ class MainWindow(QtWidgets.QMainWindow):
                         self.onRemoveCompa()
             else:
                 self.programm_TABS.addTab(self.compa_Widget,"COMPA")
+                self.programm_TABS.setCurrentIndex(self.programm_TABS.count()-1)
                 self.programm_TABS.show()
                 self.smilei_icon_BUTTON.hide()
                 if self.INIT_tabCompa != None: self.INIT_tabCompa = True
@@ -1425,6 +1425,7 @@ class MainWindow(QtWidgets.QMainWindow):
                         self.onRemoveCompa()
             else:
                 self.programm_TABS.addTab(self.binning_Widget,"BINNING")
+                self.programm_TABS.setCurrentIndex(self.programm_TABS.count()-1)
                 self.programm_TABS.show()
                 self.smilei_icon_BUTTON.hide()
                 # if self.INIT_tabCompa != None: self.INIT_tabCompa = True
@@ -1441,6 +1442,7 @@ class MainWindow(QtWidgets.QMainWindow):
                         self.onRemoveTornado()
             else:
                 self.programm_TABS.addTab(self.tornado_Widget,"TORNADO")
+                self.programm_TABS.setCurrentIndex(self.programm_TABS.count()-1)
                 self.programm_TABS.show()
                 self.smilei_icon_BUTTON.hide()
                 app.processEvents()
@@ -1797,6 +1799,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.updateInfoLabel()
 
     def onRemovePlasma(self):
+        for currentIndex in range(self.programm_TABS.count()):
+            if self.programm_TABS.tabText(currentIndex) == "PLASMA" or self.programm_TABS.tabText(currentIndex) == "COMPA": return
+        print("no COMPA or PLASMA: allowed to remove plasma diags")
         if not self.INIT_tabPlasma: #IF TAB OPEN AND SIM LOADED
             del self.plasma_data_list, self.plasma_paxisX_long, self.plasma_paxisY_long, self.plasma_t_range, self.plasma_paxisY,
             self.plasma_paxisZ, self.plasma_paxisX_Bx, self.plasma_extentXY_long , self.plasma_extentYZ
@@ -2307,6 +2312,7 @@ class MainWindow(QtWidgets.QMainWindow):
             # self.cbar_4_plasma2 = None
 
             self.INIT_tabPlasma = False
+            self.INIT_tabCompaPlasma = False
             app.processEvents()
             self.updateInfoLabel()
 
@@ -2385,7 +2391,6 @@ class MainWindow(QtWidgets.QMainWindow):
             self.canvas_4_plasma.hide()
             self.compa_binning_groupBox.hide()
             self.canvas_4_binning.hide()
-
         elif box_idx==1:
             self.compa_scalar_groupBox.hide()
             self.canvas_4_scalar.hide()
@@ -2429,11 +2434,15 @@ class MainWindow(QtWidgets.QMainWindow):
             if is_compa: diag_name_list = diag_name_list[0:1] #cannot use multiple diag when comparing
             print("Binning diag:",diag_name_list, "| is_compa:",is_compa)
             ax = figure.add_subplot(1,1,1) #Assume single ax figure
-
+            
+            binning_image_list = []
+            binning_data_list = []
+            
             for diag_name in diag_name_list:
                 try:
                     diag = self.S.ParticleBinning(diag_name)
                     binning_data = np.array(diag.getData())
+                    binning_data_list.append(binning_data)
                     # if self.binning_log_CHECK.isChecked():
                     #     data = np.log10(binning_data)
                     if is_compa:
@@ -2454,6 +2463,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
                 if binning_data.ndim == 1: # function of time only
                     binning_image, = ax.plot(t_range/self.l0,binning_data, label=diag_name)
+                    binning_image_list.append(binning_image)
                     ax.set_xlabel("t/t0")
                     if is_compa: binning_image_compa, = ax.plot(t_range/self.l0,binning_data2, label=diag_name+"_compa")
                     if self.binning_log_CHECK.isChecked(): ax.set_yscale("log")
@@ -2461,6 +2471,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     x_range = np.array(diag.getAxis(diag_name))
                     if diag_name == "ekin":
                         binning_image, = ax.plot(x_range,binning_data[time_idx], label=diag_name)
+                        binning_image_list.append(binning_image)
                         ax.set_xscale("log")
                         ax.set_yscale("log")
                         if is_compa: binning_image2, = ax.plot(x_range,binning_data2[time_idx], label=diag_name+"_compa")
@@ -2475,10 +2486,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
                         ax.set_ylabel("$L_x$")
                         binning_image, = ax.plot(x_range/self.l0,binning_data[time_idx], label=diag_name)
+                        binning_image_list.append(binning_image)
                         if is_compa: binning_image2, = ax.plot(x_range/self.l0,binning_data2[time_idx], label=diag_name+"_compa")
 
                     else:
                         binning_image, = ax.plot(x_range/self.l0,binning_data[time_idx], label=diag_name)
+                        binning_image_list.append(binning_image)
                         if is_compa: binning_image2, = ax.plot(x_range/self.l0,binning_data2[time_idx], label=diag_name+"_compa")
                         ax.set_xlabel(diag_name)
                         ax.set_ylabel("weight")
@@ -2491,8 +2504,6 @@ class MainWindow(QtWidgets.QMainWindow):
                     else:
                         data = binning_data
                         if is_compa: data2 = binning_data2
-
-
                     if is_compa:
                         figure.clf() #dont use single ax figure
                         ax = figure.add_subplot(1,2,1)
@@ -2519,19 +2530,20 @@ class MainWindow(QtWidgets.QMainWindow):
 
                     self.binning_colorbar = figure.colorbar(binning_image, ax=ax, pad=0.01)
                     if is_compa: self.binning_colorbar2 = figure.colorbar(binning_image2, ax=ax2, pad=0.01)
-                    break
-
-
+                    break         
+            
+            self.binning_data_list = binning_data_list
+            self.binning_image_list = binning_image_list
+            
             if is_compa:
                 self.compa_binning_image = binning_image
                 self.compa_binning_data = binning_data
-
                 self.compa_binning_image2 = binning_image2
                 self.compa_binning_data2 = binning_data2
-
             else:
                 self.binning_image = binning_image
                 self.binning_data = binning_data
+
             for ax in figure.axes:
                 if ax.get_label()!='<colorbar>':
                     ax.grid()
