@@ -29,7 +29,7 @@ class ThreadDownloadSimJSON(QtCore.QThread):
         host = "llrlsi-gw.in2p3.fr"
         user = "jeremy"
         with open('tornado_pwdfile.txt', 'r') as f: password = f.read()
-        remote_path = r"\sps3\jeremy\LULI\simulation_info.json"
+        remote_path = r"\sps3\jeremy\LULI\simulations_info.json"
         ssh_key_filepath = r"C:\Users\jerem\.ssh\id_rsa.pub"
         self.remote_client = paramiko_SSH_SCP_class.RemoteClient(host,user,password,ssh_key_filepath,remote_path)
         self.remote_client.execute_commands(["python3 /sps3/jeremy/LULI/check_sim_state_py.py"])

@@ -1447,7 +1447,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.smilei_icon_BUTTON.hide()
                 app.processEvents()
                 self.onInitTabTornado()
-                # self.loadthread = ThreadDownloadSimJSON("/sps3/jeremy/LULI/simulation_info.json", os.environ["SMILEI_QT"])
+                # self.loadthread = ThreadDownloadSimJSON("/sps3/jeremy/LULI/simulations_info.json", os.environ["SMILEI_QT"])
                 # self.loadthread.finished.connect(self.onInitTabTornado)
                 # self.loadthread.start()
                 # self.onInitTabTornado()
@@ -2434,10 +2434,10 @@ class MainWindow(QtWidgets.QMainWindow):
             if is_compa: diag_name_list = diag_name_list[0:1] #cannot use multiple diag when comparing
             print("Binning diag:",diag_name_list, "| is_compa:",is_compa)
             ax = figure.add_subplot(1,1,1) #Assume single ax figure
-            
+
             binning_image_list = []
             binning_data_list = []
-            
+
             for diag_name in diag_name_list:
                 try:
                     diag = self.S.ParticleBinning(diag_name)
@@ -2530,11 +2530,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
                     self.binning_colorbar = figure.colorbar(binning_image, ax=ax, pad=0.01)
                     if is_compa: self.binning_colorbar2 = figure.colorbar(binning_image2, ax=ax2, pad=0.01)
-                    break         
-            
+                    break
+
             self.binning_data_list = binning_data_list
             self.binning_image_list = binning_image_list
-            
+
             if is_compa:
                 self.compa_binning_image = binning_image
                 self.compa_binning_data = binning_data
@@ -2632,7 +2632,7 @@ class MainWindow(QtWidgets.QMainWindow):
         """
         asynchronous function called PERIODICALLY
         """
-        sim_json_name = "simulation_info.json"
+        sim_json_name = "simulations_info.json"
         with open(sim_json_name) as f:
             self.sim_dict = json.load(f)
 
@@ -2730,7 +2730,7 @@ class MainWindow(QtWidgets.QMainWindow):
         return
 
     def call_ThreadDownloadSimJSON(self):
-        self.loadthread = class_threading.ThreadDownloadSimJSON("/sps3/jeremy/LULI/simulation_info.json", os.environ["SMILEI_QT"])
+        self.loadthread = class_threading.ThreadDownloadSimJSON("/sps3/jeremy/LULI/simulations_info.json", os.environ["SMILEI_QT"])
         self.loadthread.finished.connect(self.async_onUpdateTabTornado)
         self.loadthread.start()
         return
@@ -2816,13 +2816,13 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.INIT_tabTornado:
 
             self.tornado_update_TIMER = QtCore.QTimer()
-            refresh_time_min = 10 #minute
+            refresh_time_min = 20 #minute
             self.tornado_update_TIMER.setInterval(int(refresh_time_min*60*1000)) #in ms
             # self.tornado_update_TIMER.timeout.connect(self.async_onUpdateTabTornado)
             self.tornado_update_TIMER.timeout.connect(self.call_ThreadDownloadSimJSON)
             self.tornado_update_TIMER.start()
 
-            sim_json_name = "simulation_info.json"
+            sim_json_name = "simulations_info.json"
             with open(sim_json_name) as f:
                 self.sim_dict = json.load(f)
                 self.previous_sim_dict = self.sim_dict
