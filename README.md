@@ -26,3 +26,6 @@ Allows to access app variables and perform operation or print them to the log di
 ![image](https://github.com/user-attachments/assets/6ec0e4c1-d5ab-4524-9537-10cfefb28d0d)
 ![image](https://github.com/user-attachments/assets/e2a79c50-aaee-434c-8939-a79af2d93a3a)
 ![image](https://github.com/user-attachments/assets/5868af82-fec5-405b-bf11-6bff78067d44)
+![image](https://github.com/user-attachments/assets/072712aa-63bd-4336-8899-74639dd80f23)
+![image](https://github.com/user-attachments/assets/30c6919a-7e9c-466b-804b-dae7d4926163)
+
