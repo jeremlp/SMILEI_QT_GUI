@@ -202,7 +202,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.MEMORY = psutil.virtual_memory
         self.DISK = psutil.disk_usage(os.environ["SMILEI_CLUSTER"])
-        self.SCRIPT_VERSION ='0.10.3 "Binning Compa & Trnd download"'
+        self.SCRIPT_VERSION ='0.10.5 "Binning Compa & Trnd download"'
         self.COPY_RIGHT = "Jeremy LA PORTE"
         self.spyder_default_stdout = sys.stdout
 
@@ -669,8 +669,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.canvas_4_plasma = FigureCanvas(self.figure_4_plasma)
         self.plt_toolbar_4_plasma = NavigationToolbar(self.canvas_4_plasma)
         self.plt_toolbar_4_plasma.setFixedHeight(self.toolBar_height)
-        self.ax4_plasma1 = self.figure_4_plasma.add_subplot(1,2,1)
-        self.ax4_plasma2 = self.figure_4_plasma.add_subplot(1,2,2)
+        self.ax4_plasma1 = self.figure_4_plasma.add_subplot(2,1,1)
+        self.ax4_plasma2 = self.figure_4_plasma.add_subplot(2,1,2)
         sm = plt.cm.ScalarMappable(cmap="viridis", norm=plt.Normalize(vmin=0, vmax=1))
 
         self.cbar_4_plasma2 = self.figure_4_plasma.colorbar(sm, ax=self.ax4_plasma2, pad=0.01)
@@ -703,7 +703,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.compa_groupBox.setLayout(boxLayout_settings)
 
 
-        #-------------- SCALAR Groupbox -----------------
+        #-------------- COMPA SCALAR Groupbox -----------------
         layoutCompaTabSettingsCheck = QtWidgets.QHBoxLayout()
         self.compa_scalar_check_list = []
         for name in self.scalar_names:
@@ -719,7 +719,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.compa_scalar_groupBox.setFixedHeight(110)
         self.compa_scalar_groupBox.setLayout(layoutTabSettingsCompaScalar)
 
-        #-------------- BINNING Groupbox -----------------
+        #-------------- COMPA BINNING Groupbox -----------------
         self.figure_4_binning = Figure()
         self.canvas_4_binning = FigureCanvas(self.figure_4_binning)
         self.plt_toolbar_4_binning = NavigationToolbar(self.canvas_4_binning)
@@ -750,7 +750,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # self.compa_binning_Widget.setLayout(self.layoutCompaBinning)
 
 
-        #-------------- PLASMA Groupbox -----------------
+        #-------------- COMPA PLASMA Groupbox -----------------
         layoutCompaTabSettingsCheck = QtWidgets.QHBoxLayout()
         self.compa_plasma_check_list = []
         for i,name in enumerate(self.plasma_names):
@@ -2251,13 +2251,13 @@ class MainWindow(QtWidgets.QMainWindow):
         if is_compa:
             self.compa_plasma_data2 = self.compa_plasma_data
             # self.ax4_plasma2.cla()
-            self.compa_plasma_im2 = self.ax4_plasma2.imshow(data,cmap=cmap, vmin=vmin, vmax=vmax, extent = extent)
+            self.compa_plasma_im2 = self.ax4_plasma2.imshow(data,cmap=cmap, vmin=vmin, vmax=vmax, extent = extent, aspect="auto")
             self.cbar_4_plasma2 = self.figure_4_plasma.colorbar(self.compa_plasma_im2, ax=self.ax4_plasma2, pad=0.01)
             # self.cbar_4_plasma2.update_normal(self.compa_plasma_im2)
         else:
             self.compa_plasma_data1 = self.compa_plasma_data
             # self.ax4_plasma1.cla()
-            self.compa_plasma_im1 = self.ax4_plasma1.imshow(data, cmap=cmap, vmin=vmin, vmax=vmax, extent = extent)
+            self.compa_plasma_im1 = self.ax4_plasma1.imshow(data, cmap=cmap, vmin=vmin, vmax=vmax, extent = extent, aspect="auto")
             self.cbar_4_plasma1 = self.figure_4_plasma.colorbar(self.compa_plasma_im1, ax=self.ax4_plasma1, pad=0.01)
             # self.cbar_4_plasma1.update_normal(self.compa_plasma_im1)
 
