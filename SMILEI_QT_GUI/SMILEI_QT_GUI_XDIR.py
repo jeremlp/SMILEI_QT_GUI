@@ -941,8 +941,11 @@ class MainWindow(QtWidgets.QMainWindow):
         # CONNECTS
         #=====================================================================
         self.load_sim_BUTTON.clicked.connect(self.onOpenSim)
-
         self.compa_load_sim_BUTTON.clicked.connect(self.onOpenCompaSim)
+
+        self.sim_directory_name_LABEL.mousePressEvent = self.onCopySimName
+
+
 
         for i in range(len(self.scalar_check_list)):
             self.scalar_check_list[i].clicked.connect(partial(self.onUpdateTabScalar,i,is_compa=False))
@@ -1088,6 +1091,17 @@ class MainWindow(QtWidgets.QMainWindow):
             event.ignore()  # Don't close the app
         # sys.exit(0)
 
+    def onCopySimName(self, event):
+        if self.is_sim_loaded:
+            print(self.sim_directory_path)
+            clipboard = QtWidgets.QApplication.clipboard()
+            text = f"""module_dir_happi = 'C:/Users/jerem/Smilei'\nsys.path.insert(0, module_dir_happi)\nimport happi\nS = happi.Open('{self.sim_directory_path}')"""
+            clipboard.setText(text)
+            self.sim_directory_name_LABEL.setStyleSheet("background-color: lightgreen") 
+            app.processEvents
+            time.sleep(10)
+            # self.sim_directory_name_LABEL.setStyleSheet("background-color: rgba(255, 255, 255, 0)") 
+            # app.processEvents
 
     def onCloseLogs(self):
         try:
@@ -2465,7 +2479,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     binning_image, = ax.plot(t_range/self.l0,binning_data, label=diag_name)
                     binning_image_list.append(binning_image)
                     ax.set_xlabel("t/t0")
-                    if is_compa: binning_image_compa, = ax.plot(t_range/self.l0,binning_data2, label=diag_name+"_compa")
+                    if is_compa: binning_image2, = ax.plot(t_range/self.l0,binning_data2, label=diag_name+"_compa")
                     if self.binning_log_CHECK.isChecked(): ax.set_yscale("log")
                 elif binning_data.ndim == 2:
                     x_range = np.array(diag.getAxis(diag_name))
@@ -2474,6 +2488,7 @@ class MainWindow(QtWidgets.QMainWindow):
                         binning_image_list.append(binning_image)
                         ax.set_xscale("log")
                         ax.set_yscale("log")
+                        ax.set_xlabel("Ekin")
                         if is_compa: binning_image2, = ax.plot(x_range,binning_data2[time_idx], label=diag_name+"_compa")
 
                     elif diag_name=="Lx_x" or diag_name=="Lx_x_av" or diag_name=="Lx_r":
@@ -2519,13 +2534,29 @@ class MainWindow(QtWidgets.QMainWindow):
                         if is_compa: binning_image2 = ax2.imshow(data2[time_idx].T, extent=extent, cmap="smilei",aspect="auto", origin="lower")
                         ax.set_xlabel("$x/\lambda$")
                         ax.set_ylabel("px")
-                    if diag_name =="phase_space_Lx":
+                    elif diag_name =="phase_space_v":
+                        vy_range  = diag.getAxis("vy")
+                        vz_range = diag.getAxis("vz")
+                        extent = [vy_range[0],vy_range[-1],vz_range[0],vz_range[-1]]
+                        binning_image = ax.imshow(data[time_idx].T, extent=extent, cmap="smilei",aspect="auto", origin="lower")
+                        if is_compa: binning_image2 = ax2.imshow(data2[time_idx].T, extent=extent, cmap="smilei",aspect="auto", origin="lower")
+                        ax.set_xlabel("vy")
+                        ax.set_ylabel("vz")
+                    elif diag_name =="phase_space_Lx" or diag_name =="phase_space_Lx_raw":
                         x_range  = diag.getAxis("x")
                         px_range = diag.getAxis("user_function0")
                         extent = [x_range[0]/self.l0,x_range[-1]/self.l0,px_range[0],px_range[-1]]
                         binning_image = ax.imshow(data[time_idx].T, extent=extent, cmap="smilei",aspect="auto", origin="lower")
                         if is_compa: binning_image2 = ax2.imshow(data2[time_idx].T, extent=extent, cmap="smilei",aspect="auto", origin="lower")
                         ax.set_xlabel("$x/\lambda$")
+                        ax.set_ylabel("Lx")
+                    elif diag_name =="phase_space_Lx_r":
+                        r_range  = diag.getAxis("user_function0")
+                        Lx_range = diag.getAxis("user_function1")
+                        extent = [r_range[0]/self.l0,r_range[-1]/self.l0,Lx_range[0],Lx_range[-1]]
+                        binning_image = ax.imshow(data[time_idx].T, extent=extent, cmap="smilei",aspect="auto", origin="lower")
+                        if is_compa: binning_image2 = ax2.imshow(data2[time_idx].T, extent=extent, cmap="smilei",aspect="auto", origin="lower")
+                        ax.set_xlabel("$r/\lambda$")
                         ax.set_ylabel("Lx")
 
                     self.binning_colorbar = figure.colorbar(binning_image, ax=ax, pad=0.01)

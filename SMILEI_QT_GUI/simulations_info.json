@@ -1,30 +1,30 @@
 {
-    "42647": {
-        "job_id": "42647",
-        "job_full_path": "/sps3/jeremy/LULI/performance/plasma_rmax3",
-        "job_full_name": "plasma_rmax3.sh",
-        "NODES": "5",
-        "progress": 0.3978779840848806,
-        "ETA": "0h34",
-        "push_time": 4879
+    "42799": {
+        "job_id": "42799",
+        "job_full_path": "/sps3/jeremy/LULI/SIM_PHYSICAL/sim_Tp12_Long",
+        "job_full_name": "sim_Tp12_Long.sh",
+        "NODES": "7",
+        "progress": 0.9586186364989581,
+        "ETA": "1h01",
+        "push_time": 2583
     },
-    "42650": {
-        "job_id": "42650",
-        "job_full_path": "/sps3/jeremy/LULI/SIM_PHYSICAL/sim_w3",
-        "job_full_name": "sim_w3.sh",
-        "NODES": "5",
-        "progress": 0.13103037522334723,
-        "ETA": "2h08",
-        "push_time": 2894
+    "42920": {
+        "job_id": "42920",
+        "job_full_path": "/sps3/jeremy/LULI/SIM_PHYSICAL/sim_w3_Tp12_SAM_Long",
+        "job_full_name": "sim_w3_Tp12_SAM_Long.sh",
+        "NODES": "4",
+        "progress": 0.5001488538255433,
+        "ETA": "5h26",
+        "push_time": 2578
     },
-    "42651": {
-        "job_id": "42651",
-        "job_full_path": "/sps3/jeremy/LULI/SIM_PHYSICAL/sim_Tp12",
-        "job_full_name": "sim_Tp12.sh",
-        "NODES": "5",
-        "progress": 0.029779630732578916,
-        "ETA": "6h41",
-        "push_time": 2025
+    "43064": {
+        "job_id": "43064",
+        "job_full_path": "/sps3/jeremy/LULI/plasma_OAM_XDIR_NO_IONS_DIAGS",
+        "job_full_name": "plasma_OAM_XDIR_NO_IONS_DIAGS.sh",
+        "NODES": "2",
+        "progress": 0.017873100983020553,
+        "ETA": "2h56",
+        "push_time": 7074
     },
-    "datetime": "13/10 - 19h11"
+    "datetime": "16/10 - 16h45"
 }

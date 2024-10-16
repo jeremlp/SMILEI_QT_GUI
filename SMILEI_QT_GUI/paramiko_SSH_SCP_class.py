@@ -141,3 +141,4 @@ class RemoteClient:
                     f"INPUT: {cmd}\n \
                     OUTPUT: {line}"
                 )
+        return response

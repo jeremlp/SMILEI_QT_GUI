@@ -317,7 +317,7 @@ class ThreadGetPlasmaProbeData(QtCore.QThread):
         # print(round(t1-t0,2),"s")
         return plasma_data_list, selected_plasma_names
     def run(self):
-        plasma_data_list,selected_plasma_names = self.getPlasmaProbeData_OLD(self.S, self.selected_plasma_names)
+        plasma_data_list,selected_plasma_names = self.getPlasmaProbeData(self.S, self.selected_plasma_names)
         self.finished.emit([plasma_data_list,selected_plasma_names])
 
 class ThreadGetAMIntegral(QtCore.QThread):
