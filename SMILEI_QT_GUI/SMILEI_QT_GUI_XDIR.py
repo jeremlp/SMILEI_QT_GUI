@@ -202,7 +202,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.MEMORY = psutil.virtual_memory
         self.DISK = psutil.disk_usage(os.environ["SMILEI_CLUSTER"])
-        self.SCRIPT_VERSION ='0.10.5 "Binning Compa & Trnd download"'
+        self.SCRIPT_VERSION ='0.10.7 "Binning Compa & Trnd download"'
         self.COPY_RIGHT = "Jeremy LA PORTE"
         self.spyder_default_stdout = sys.stdout
 
@@ -1097,10 +1097,9 @@ class MainWindow(QtWidgets.QMainWindow):
             clipboard = QtWidgets.QApplication.clipboard()
             text = f"""module_dir_happi = 'C:/Users/jerem/Smilei'\nsys.path.insert(0, module_dir_happi)\nimport happi\nS = happi.Open('{self.sim_directory_path}')"""
             clipboard.setText(text)
-            self.sim_directory_name_LABEL.setStyleSheet("background-color: lightgreen") 
-            app.processEvents
-            time.sleep(10)
-            # self.sim_directory_name_LABEL.setStyleSheet("background-color: rgba(255, 255, 255, 0)") 
+            # self.sim_directory_name_LABEL.setStyleSheet("background-color: lightgreen")
+            # app.processEvents
+            # self.sim_directory_name_LABEL.setStyleSheet("background-color: rgba(255, 255, 255, 0)")
             # app.processEvents
 
     def onCloseLogs(self):
@@ -1468,16 +1467,39 @@ class MainWindow(QtWidgets.QMainWindow):
         self.updateInfoLabel()
         return
 
-    def writeToFileCompa(self, file_name, file_data):
-        file_path = f"{self.sim_directory_path}\data_{file_name}.npy"
+    def writeToFileCompa(self, sim_dir, file_name, file_data):
+        file_path = f"{sim_dir}\data_{file_name}.npy"
         np.savetxt(file_path, file_data)
         return
 
-    def call_ThreadGetAMIntegral(self, is_compa=False):
-        self.loadthread = class_threading.ThreadGetAMIntegral(self.S)
+    def call_ThreadGetAMIntegral(self, S, is_compa=False):
+        """If not npy file available, use expensive computation"""
+
+        self.loadthread = class_threading.ThreadGetAMIntegral(S)
         self.loadthread.finished.connect(partial(self.onUpdateTabScalar_AM,is_compa=is_compa))
         self.loadthread.start()
         return
+
+    def call_ThreadGetAMIntegral_compa(self, S):
+        """If not npy file available for comparison """
+        self.loadthread = class_threading.ThreadGetAMIntegral(S)
+        self.loadthread.finished.connect(partial(self.onUpdateTabScalar_AM_compa))
+        self.loadthread.start()
+        return
+    def onUpdateTabScalar_AM_compa(self, AM_full_int_compa):
+        canvas = self.canvas_4_scalar
+        figure = canvas.figure
+        ax = figure.axes[0]
+        fields_t_range = self.compa_S.Probe(0,"Ex").getTimes()
+
+        ax.plot(fields_t_range/self.l0, AM_full_int_compa,"--", label="AM", c=f"C{len(ax.get_lines())}")
+        self.writeToFileCompa(self.compa_sim_directory_path,"AM",np.vstack([fields_t_range,AM_full_int_compa]).T)
+        ax.legend()
+        ax.relim()            # Recompute the limits based on current data
+        ax.autoscale_view()   # Apply the new limits
+        figure.tight_layout()
+        canvas.draw()
+
 
     def onUpdateTabScalar_AM(self, AM_full_int, is_compa=False):
         # print(AM_full_int.shape, is_compa)
@@ -1491,15 +1513,21 @@ class MainWindow(QtWidgets.QMainWindow):
 
         figure = canvas.figure
         ax = figure.axes[0]
-        ax.plot(fields_t_range/self.l0, AM_full_int,label="AM", c=f"C{len(ax.get_lines())}")
+        ax.plot(fields_t_range/self.l0, AM_full_int,label="AM", ls="-", c=f"C{len(ax.get_lines())}")
+        self.writeToFileCompa(self.sim_directory_path,"AM",np.vstack([fields_t_range,AM_full_int]).T)
 
 
-        self.writeToFileCompa("AM",np.vstack([fields_t_range,AM_full_int]).T)
         if is_compa and self.is_compa_sim_loaded:
-            data_file = np.loadtxt(f"{self.compa_sim_directory_path}/data_AM.npy")
-            data_t_range, data = data_file[:,0], data_file[:,1]
-            ax.plot(data_t_range/self.l0, data,
-                      label="AM", ls="--",color = f"C{len(ax.get_lines())}")
+            try:
+                data_file = np.loadtxt(f"{self.compa_sim_directory_path}/data_AM.npy")
+                data_t_range, data = data_file[:,0], data_file[:,1]
+                ax.plot(data_t_range/self.l0, data,
+                          label="AM", ls="--",color = f"C{len(ax.get_lines())}")
+            except FileNotFoundError:
+                print("USE EXPENSIVE AM COMPUTATION COMPA")
+                self.call_ThreadGetAMIntegral_compa(self.compa_S)
+                # raise
+                # self.call_ThreadGetAMIntegral(self.compa_S)
         ax.legend()
         # hfont = {'fontname':'Helvetica'}
         # print(AM_tot)
@@ -1545,11 +1573,13 @@ class MainWindow(QtWidgets.QMainWindow):
                               label=self.scalar_names[check_id], ls="-",color = f"C{len(ax.get_lines())}")
                 ax.legend()
 
-                self.writeToFileCompa("Uelm_over_Utot",np.vstack([self.scalar_t_range, data]).T)
+                # self.writeToFileCompa(self.sim_directory_path,"Uelm_over_Utot",np.vstack([self.scalar_t_range, data]).T)
                 if is_compa and self.is_compa_sim_loaded:
-                    data_file = np.loadtxt(f"{self.compa_sim_directory_path}/data_Uelm_over_Utot.npy")
-                    data_t_range, data = data_file[:,0], data_file[:,1]
-                    ax.plot(data_t_range/l0, data,
+                    # data_file = np.loadtxt(f"{self.compa_sim_directory_path}/data_Uelm_over_Utot.npy")
+                    # data_t_range, data = data_file[:,0], data_file[:,1]
+                    data_compa = np.array(self.compa_S.Scalar("Uelm").getData())/(np.array(self.compa_S.Scalar("Utot").getData())+1e-12)
+                    data_t_range_compa = self.compa_S.Scalar("Uelm").getTimes()
+                    ax.plot(data_t_range_compa/l0, data_compa,
                               label=f"{self.scalar_names[check_id]}", ls="--",color = f"C{len(ax.get_lines())}")
 
 
@@ -1558,21 +1588,37 @@ class MainWindow(QtWidgets.QMainWindow):
                 ax.plot(self.scalar_t_range/l0, data,
                               label=self.scalar_names[check_id], color = f"C{len(ax.get_lines())}")
                 ax.legend()
-                self.writeToFileCompa(self.scalar_names[check_id],np.vstack([self.scalar_t_range, data]).T)
+                # self.writeToFileCompa(self.sim_directory_path, self.scalar_names[check_id],np.vstack([self.scalar_t_range, data]).T)
                 if is_compa and self.is_compa_sim_loaded:
-                    data_file = np.loadtxt(f"{self.compa_sim_directory_path}/data_{self.scalar_names[check_id]}.npy")
-                    data_t_range, data = data_file[:,0], data_file[:,1]
-                    ax.plot(data_t_range/l0, data,
+                    #data_file = np.loadtxt(f"{self.compa_sim_directory_path}/data_{self.scalar_names[check_id]}.npy")
+                    #data_t_range, data = data_file[:,0], data_file[:,1]
+                    data_compa = np.array(self.compa_S.Scalar(self.scalar_names[check_id]).getData())
+                    data_t_range_compa = self.compa_S.Scalar("Uelm").getTimes()
+                    ax.plot(data_t_range_compa/l0, data_compa,
                               label=f"{self.scalar_names[check_id]}", ls="--",color = f"C{len(ax.get_lines())}")
-            else:
+            else: #Angular Momentum
                 try:
                     data_file_AM = np.loadtxt(f"{self.sim_directory_path}/data_AM.npy")
+                    print(data_file_AM.shape)
                     data_t_range, AM_data = data_file_AM[:,0], data_file_AM[:,1]
-                    self.onUpdateTabScalar_AM(AM_data,is_compa=is_compa)
+                    ax.plot(data_t_range/l0, AM_data,
+                              label=f"{self.scalar_names[check_id]}", ls="-",color = f"C{len(ax.get_lines())}")
+                    # self.onUpdateTabScalar_AM(AM_data,is_compa=is_compa)
+                        # self.onUpdateTabScalar_AM(AM_data_compa,is_compa=is_compa)
                 except FileNotFoundError:
                     print("USE EXPENSIVE AM COMPUTATION")
-                    self.call_ThreadGetAMIntegral(is_compa)
-                return
+                    self.call_ThreadGetAMIntegral(self.S, is_compa)
+                if is_compa and self.is_compa_sim_loaded:
+                    try:
+                        data_file_AM_compa = np.loadtxt(f"{self.compa_sim_directory_path}/data_AM.npy")
+                        data_t_range_compa, AM_data_compa = data_file_AM_compa[:,0], data_file_AM_compa[:,1]
+                        ax.plot(data_t_range_compa/l0, AM_data_compa,
+                                  label=f"{self.scalar_names[check_id]}", ls="--",color = f"C{len(ax.get_lines())}")
+                    except FileNotFoundError:
+                        print("USE EXPENSIVE AM COMPUTATION COMPA ONLY")
+                        self.call_ThreadGetAMIntegral_compa(self.compa_S)
+
+                # return
         else:
             # print("\n==================")
             old_lines = ax.get_lines()
@@ -2610,6 +2656,7 @@ class MainWindow(QtWidgets.QMainWindow):
             if binning_data.ndim == 1:
                 binning_image.axes.set_yscale("log")
                 if is_compa: binning_image2.axes.set_yscale("log")
+                canvas.draw()
                 return
 
             elif binning_data.ndim == 2:
