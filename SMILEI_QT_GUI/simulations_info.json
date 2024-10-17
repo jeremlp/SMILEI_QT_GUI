@@ -1,30 +1,39 @@
 {
-    "43260": {
-        "job_id": "43260",
-        "job_full_path": "/sps3/jeremy/LULI/plasma_OAM_XDIR_NO_IONS_DIAGS",
-        "job_full_name": "plasma_OAM_XDIR_NO_IONS_DIAGS.sh",
-        "NODES": "1",
-        "progress": 0.43789097408400357,
-        "ETA": "3h30",
-        "push_time": 7399
-    },
     "43261": {
         "job_id": "43261",
         "job_full_path": "/sps3/jeremy/LULI/SIM_PHYSICAL/sim_base_NOAM_Long",
         "job_full_name": "sim_base_NOAM_Long.sh",
         "NODES": "5",
-        "progress": 0.08633521881512354,
-        "ETA": "23h28",
-        "push_time": 1886
+        "progress": 0.6936588270318547,
+        "ETA": "9h11",
+        "push_time": 2211
     },
     "43284": {
         "job_id": "43284",
         "job_full_path": "/sps3/jeremy/LULI/SIM_PHYSICAL/sim_base_SAM_Long",
         "job_full_name": "sim_base_SAM_Long.sh",
         "NODES": "5",
-        "progress": 0.05358737719559393,
-        "ETA": "31h06",
-        "push_time": 2412
+        "progress": 0.6728192914557904,
+        "ETA": "11h23",
+        "push_time": 2569
     },
-    "datetime": "16/10 - 22h47"
+    "43494": {
+        "job_id": "43494",
+        "job_full_path": "/sps3/jeremy/LULI/SIM_PHYSICAL/lamac",
+        "job_full_name": "lamac.sh",
+        "NODES": "5",
+        "progress": 0.6134603930911257,
+        "ETA": "1h28",
+        "push_time": 3230
+    },
+    "43518": {
+        "job_id": "43518",
+        "job_full_path": "/sps3/jeremy/LULI/plasma_OAM_XDIR_NO_IONS_DIAGS",
+        "job_full_name": "plasma_OAM_XDIR_NO_IONS_DIAGS.sh",
+        "NODES": "2",
+        "progress": 0.08577555396711938,
+        "ETA": "3h46",
+        "push_time": 6815
+    },
+    "datetime": "17/10 - 17h51"
 }

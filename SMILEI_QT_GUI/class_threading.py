@@ -97,7 +97,7 @@ class ThreadGetFieldsProbeData(QtCore.QThread):
                 if fields_names[i]=="Er":
                     T,X,Y,Z = np.meshgrid(fields_t_range, fields_paxisX,fields_paxisY,fields_paxisZ,indexing="ij")
                     Er = (Y*np.array(S.Probe(0,"Ey").getData()).astype(np.float32)
-                              + Z*np.array(S.Probe(0,"Ez").getData()).astype(np.float32))/np.sqrt(Y**2+Y**Z) #TO VERIFY IF NOT USE A TRANSPOSE
+                              + Z*np.array(S.Probe(0,"Ez").getData()).astype(np.float32))/np.sqrt(Y**2+Z**2) #TO VERIFY IF NOT USE A TRANSPOSE
                     fields_data_list.append(Er)
                     del T,X,Y,Z,Er
                 elif fields_names[i]=="Eθ":

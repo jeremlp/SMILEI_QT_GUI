@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 import sys
-
+import os
 module_dir_happi = 'C:/Users/jerem/Smilei'
 sys.path.insert(0, module_dir_happi)
 import happi
@@ -15,8 +15,9 @@ from scipy.interpolate import interpn
 
 l0 = 2*pi
 plt.close("all")
+cluster_path = os.environ["SMILEI_CLUSTER"]
 
-PATH = r"D:\JLP\CMI\_MASTER_2_\_STAGE_LULI_\CLUSTER\test_base_script_plasma_OAM_XDIR_NO_IONS"
+PATH = rf"{cluster_path}\plasma_OAM_XDIR_NO_IONS_DIAGS"
 
 anim_ms = 100
 
@@ -79,7 +80,12 @@ Color a tri-mesh according to a function evaluated in each barycentre.
 # MAGNETIC FIELD BZ
 #==================================================
 Bx_diag = S.Probe(0,"Bx")
-Bx_diag = S.Probe("3D","Bx")
+# Bx_diag = S.Probe("3D","Bx")
+
+
+Bx_diag.toVTK()
+
+"""
 
 Bx = np.array(Bx_diag.getData())[-1,:88]
 print(Bx.shape)
@@ -109,7 +115,7 @@ p3dc = ax.plot_trisurf(vertices[:, 0], vertices[:, 1], vertices[:, 2],
 
 
 mappable = map_colors(p3dc, Bx, 'RdYlBu')
-plt.colorbar(mappable,ax=ax)
+plt.colorbar(mappable,ax=ax)"""
 
 
 

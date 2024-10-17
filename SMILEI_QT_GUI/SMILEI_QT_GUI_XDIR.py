@@ -202,7 +202,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.MEMORY = psutil.virtual_memory
         self.DISK = psutil.disk_usage(os.environ["SMILEI_CLUSTER"])
-        self.SCRIPT_VERSION ='0.10.7 "Binning Compa & Trnd download"'
+        self.SCRIPT_VERSION ='0.10.8 "Binning Compa & Trnd download"'
         self.COPY_RIGHT = "Jeremy LA PORTE"
         self.spyder_default_stdout = sys.stdout
 
@@ -1229,6 +1229,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ne_SI = self.ne*eps0*me/e**2*self.wr**2
         self.wp = np.sqrt(self.ne)*self.wr
         self.wi = np.sqrt(self.ne_SI*e**2/(1836*me*eps0))
+        # self.lmbd_D = sqrt(eps0*kB*T)
         self.nc = eps0*me/e**2*self.wr**2*(10**-6) #cm-3
         K = me*c**2
         N = eps0*me*self.wr**2/e**2
@@ -1780,7 +1781,6 @@ class MainWindow(QtWidgets.QMainWindow):
             return
 
         elif check_id <= 110 or ((check_id==200 or check_id==201) and self.sim_cut_direction_BOX.currentIndex()==1): #SLIDER UPDATE
-            print((time.perf_counter()-self.timer)*1000,"ms")
             self.timer = time.perf_counter()
             if check_id == 101:
                 time_edit_value = float(self.fields_time_EDIT.text())
@@ -1810,7 +1810,7 @@ class MainWindow(QtWidgets.QMainWindow):
             else:
                 for i,im in enumerate(self.fields_image_list):
                     im.set_data(self.fields_data_list[i][time_idx,xcut_idx,:,:].T)
-                    im.autoscale()
+                    # im.autoscale()
                     self.figure_1.suptitle(f"$t={self.fields_t_range[time_idx]/self.l0:.2f}~t_0$ ; $x={self.fields_paxisX[xcut_idx]/l0:.2f}~\lambda$")
             self.canvas_1.draw()
 
@@ -1831,7 +1831,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 else:
                     for i,im in enumerate(self.fields_image_list):
                         im.set_data(self.fields_data_list[i][time_idx,xcut_idx,:,:].T)
-                        im.autoscale()
+                        # im.autoscale()
                 self.figure_1.suptitle(f"$t={self.fields_t_range[time_idx]/self.l0:.2f}~t_0$ ; $x={self.fields_paxisX[xcut_idx]/l0:.2f}~\lambda$")
                 self.canvas_1.draw()
                 time.sleep(0.05)
@@ -1898,6 +1898,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.track_t_range = T0.getTimes()
             self.track_traj = T0.getData()
             self.track_time_SLIDER.setMaximum(len(self.track_t_range)-1)
+            self.track_time_SLIDER.setValue(len(self.track_t_range)-1)
             # self.extentXY = [-2*self.w0,2*self.w0,-2*self.w0,2*self.w0]
 
             del T0
@@ -1933,11 +1934,11 @@ class MainWindow(QtWidgets.QMainWindow):
             ax1,ax2 = self.figure_2.subplots(1,2)
             time0 = time.perf_counter()
             mean_coef = 5
-            ax1.scatter(self.r[0]/l0,self.Lx_track[-1],s=1,label="$L_x$")
+            self.track_radial_distrib_im = ax1.scatter(self.r[0]/l0,self.Lx_track[-1],s=1,label="$L_x$")
             ax1.set_xlabel("$r/\lambda$")
-            ax1.set_xylabel("$L_x$")
+            ax1.set_ylabel("$L_x$")
             a_range_r,MLx = self.averageAM(self.r[0], self.Lx_track[-1], 0.5)
-            ax1.plot(a_range_r/l0, MLx*mean_coef,"r",label="5<$L_x$>")
+            ax1.plot(a_range_r/l0, MLx*mean_coef,"r",label="5<$L_x$>",alpha=0.2)
             ax1.grid()
             ax1.legend()
             # im = ax2.imshow(Lz_interp,extent=extent_interp,cmap="RdYlBu")
@@ -1961,6 +1962,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 time_idx = self.track_time_SLIDER.sliderPosition()
                 self.track_time_EDIT.setText(str(round(self.track_t_range[time_idx]/l0,2)))
             self.track_trans_distrib_im.set_array(self.Lx_track[time_idx])
+            self.track_radial_distrib_im.set_offsets(np.c_[self.r[0]/l0,self.Lx_track[time_idx]])
             self.figure_2.suptitle(f"t={self.track_t_range[time_idx]/self.l0:.2f}$~t_0$ (N={self.track_N/1000:.2f}k)")
             self.canvas_2.draw()
 
@@ -1975,6 +1977,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.track_time_SLIDER.setValue(time_idx)
                 self.track_trans_distrib_im.set_offsets(np.c_[self.y[time_idx]/l0,self.z[time_idx]/l0])
                 self.track_trans_distrib_im.set_array(self.Lx_track[time_idx])
+                self.track_radial_distrib_im.set_offsets(np.c_[self.r[0]/l0,self.Lx_track[time_idx]])
+
                 self.figure_2.suptitle(f"t={self.track_t_range[time_idx]/self.l0:.2f}$~t_0$ (N={self.track_N/1000:.2f}k)")
                 self.canvas_2.draw()
                 # print('drawn')
