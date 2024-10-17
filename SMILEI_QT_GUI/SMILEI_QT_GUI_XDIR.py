@@ -1222,18 +1222,18 @@ class MainWindow(QtWidgets.QMainWindow):
 
         me = 9.1093837*10**-31
         e = 1.60217663*10**-19
-        c = 299792458
+        self.c = 299792458
         eps0 = 8.854*10**-12
         self.toTesla = 10709
-        self.wr = 2*pi*c/1e-6
+        self.wr = 2*pi*self.c/1e-6
         self.ne_SI = self.ne*eps0*me/e**2*self.wr**2
         self.wp = np.sqrt(self.ne)*self.wr
         self.wi = np.sqrt(self.ne_SI*e**2/(1836*me*eps0))
         # self.lmbd_D = sqrt(eps0*kB*T)
         self.nc = eps0*me/e**2*self.wr**2*(10**-6) #cm-3
-        K = me*c**2
+        K = me*self.c**2
         N = eps0*me*self.wr**2/e**2
-        L = c/self.wr
+        L = self.c/self.wr
         KNL3 = K*N*L**3
         self.energy_SI = np.max(self.S.Scalar("Utot").getData())*1000*KNL3
         self.Tp_SI = self.Tp/self.wr*10**15
@@ -2658,9 +2658,13 @@ class MainWindow(QtWidgets.QMainWindow):
             # print(t_range)
 
             if binning_data.ndim == 1:
-                binning_image.axes.set_yscale("log")
-                if is_compa: binning_image2.axes.set_yscale("log")
-                canvas.draw()
+                if self.binning_log_CHECK.isChecked():
+                    binning_image.axes.set_yscale("log")
+                    if is_compa: binning_image2.axes.set_yscale("log")
+                    canvas.draw()
+                else:
+                    binning_image.axes.set_yscale("linear")
+                    if is_compa: binning_image2.axes.set_yscale("linear")
                 return
 
             elif binning_data.ndim == 2:
