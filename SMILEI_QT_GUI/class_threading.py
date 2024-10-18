@@ -29,7 +29,7 @@ class ThreadDownloadSimJSON(QtCore.QThread):
         print("THREAD downloadSimJSON")
         host = "llrlsi-gw.in2p3.fr"
         user = "jeremy"
-        with open('tornado_pwdfile.txt', 'r') as f: pwd_crypt = f.read()
+        with open('../tornado_pwdfile.txt', 'r') as f: pwd_crypt = f.read()
         pwd = encrypt(pwd_crypt,-2041000*2-1)
         remote_path = r"\sps3\jeremy\LULI\simulations_info.json"
         ssh_key_filepath = r"C:\Users\jerem\.ssh\id_rsa.pub"
