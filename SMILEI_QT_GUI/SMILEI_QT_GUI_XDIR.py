@@ -43,7 +43,8 @@ import json
 from pathlib import Path
 from functools import partial
 # from win11toast import toast
-from pyqttoast import Toast, ToastPreset
+# from pyqttoast import Toast, ToastPreset
+from utils import Popup
 import decimal
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -202,7 +203,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.MEMORY = psutil.virtual_memory
         self.DISK = psutil.disk_usage(os.environ["SMILEI_CLUSTER"])
-        self.SCRIPT_VERSION ='0.10.8 "Binning Compa & Trnd download"'
+        self.SCRIPT_VERSION ='0.10.10 "Binning Compa & Trnd download"'
         self.COPY_RIGHT = "Jeremy LA PORTE"
         self.spyder_default_stdout = sys.stdout
 
@@ -418,8 +419,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.plt_toolbar_0 = NavigationToolbar(self.canvas_0)
         self.plt_toolbar_0.setFixedHeight(self.toolBar_height)
         self.ax0 = self.figure_0.add_subplot(1,1,1)
-        self.ax0.grid()
-        self.ax0.set_xlabel("t/t0",fontsize=14)
+        # self.ax0.grid()
+        # self.ax0.set_xlabel("t/t0",fontsize=14)
 
         fontsize = 12
 
@@ -591,7 +592,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.plt_toolbar_3.setFixedHeight(self.toolBar_height)
 
         layoutTabSettingsCheck = QtWidgets.QHBoxLayout()
-        self.plasma_names = ["Bx","Bx_trans","ne","ne_trans","Lx","Lx_trans","pθ","pθ_trans", "Jθ", "Jθ_trans", "Ekin", "Ekin_trans"]
+        self.plasma_names = ["Bx","Bx_av","Bx_trans","ne","ne_av","ne_trans","Lx","Lx_trans","pθ","pθ_trans", "Jθ", "Jθ_trans", "Ekin", "Ekin_trans"]
         self.plasma_check_list = []
         for i, name in enumerate(self.plasma_names):
             plasma_CHECK = QtWidgets.QCheckBox(name)
@@ -611,7 +612,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.plasma_check_list[0].setChecked(True)
         # self.Ey_CHECK.setChecked(True)
-        self.plasma_check_list[1].setChecked(True)
+        self.plasma_check_list[3].setChecked(True)
 
         layoutTabSettingsCheck.setSpacing(0)
 
@@ -1544,10 +1545,24 @@ class MainWindow(QtWidgets.QMainWindow):
         return
 
     def onUpdateTabScalar(self, check_id, is_compa=False):
+        print("onUpdateTabScalar")
         # print("onUpdateTabScalar",check_id, is_compa)
         if self.INIT_tabScalar == None or self.is_sim_loaded == False:
-            # self.showError("Simulation not loaded")
+            # Popup().showError("Simulation not loaded")
             return
+        if self.INIT_tabScalar:
+            [check.setChecked(False) for check in self.scalar_check_list[1:]]
+            [check.setChecked(False) for check in self.compa_scalar_check_list[1:]]
+            self.ax0.cla()
+            self.ax4_scalar.cla()
+            self.ax0.grid()
+            self.ax0.set_xlabel("t/t0",fontsize=14)
+            self.ax4_scalar.grid()
+            self.ax4_scalar.set_xlabel("t/t0",fontsize=14)
+
+            
+            print("===== INIT SCALAR =====")
+            
         self.INIT_tabScalar = False
 
         # t0 = time.perf_counter()
@@ -1565,7 +1580,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.scalar_t_range = self.S.Scalar("Uelm").getTimes()
         figure = canvas.figure
         ax = figure.axes[0]
-        AM_tot = np.NaN
+        AM_max = np.NaN
 
         if boolList[check_id] == True: # Was False before and has been selected
             if self.scalar_names[check_id] == "Uelm/Utot":
@@ -1618,6 +1633,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     except FileNotFoundError:
                         print("USE EXPENSIVE AM COMPUTATION COMPA ONLY")
                         self.call_ThreadGetAMIntegral_compa(self.compa_S)
+                AM_max = np.max(AM_data)
 
                 # return
         else:
@@ -1639,7 +1655,7 @@ class MainWindow(QtWidgets.QMainWindow):
         ax.autoscale_view()   # Apply the new limits
         # hfont = {'fontname':'Helvetica'}
 
-        figure.suptitle(f"""Scalar time plot \nMAX: $Utot={self.Utot_tot_max*self.KNL3*1000:.2f}$ mJ;  $Uelm={self.Uelm_tot_max*self.KNL3*1000:.2f}$ mJ; $Ukin={self.Ukin_tot_max*self.KNL3*1000:.2f}$ mJ;  AM/U={AM_tot/self.Uelm_tot_max:.2f}\nEND: $Utot={self.Utot_tot_end*self.KNL3*1000:.2f}$ mJ;  $Uelm={self.Uelm_tot_end*self.KNL3*1000:.2f}$ mJ;  $Ukin={self.Ukin_tot_end*self.KNL3*1000:.2f}$ mJ""",fontsize=14)
+        figure.suptitle(f"""Scalar time plot \nMAX: $Utot={self.Utot_tot_max*self.KNL3*1000:.2f}$ mJ;  $Uelm={self.Uelm_tot_max*self.KNL3*1000:.2f}$ mJ; $Ukin={self.Ukin_tot_max*self.KNL3*1000:.2f}$ mJ;  AM/U={AM_max/self.Uelm_tot_max:.2f}\nEND: $Utot={self.Utot_tot_end*self.KNL3*1000:.2f}$ mJ;  $Uelm={self.Uelm_tot_end*self.KNL3*1000:.2f}$ mJ;  $Ukin={self.Ukin_tot_end*self.KNL3*1000:.2f}$ mJ""",fontsize=14)
         figure.tight_layout()
         canvas.draw()
         # t1 = time.perf_counter()
@@ -1720,7 +1736,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
         if self.INIT_tabFields == None or self.is_sim_loaded == False:
-            # self.showError("Simulation not loaded")
+            # Popup().showError("Simulation not loaded")
             return
         if self.INIT_tabFields:
             print("===== INIT FIELDS TAB =====")
@@ -1869,7 +1885,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.updateInfoLabel()
 
     def onRemoveCompa(self):
-        if not self.INIT_tabPlasma: pass
+        if not self.INIT_tabPlasma:
+            del self.compa_plasma_paxisX_long,self.compa_plasma_paxisY_long,self.compa_plasma_t_range,self.compa_plasma_paxisY,
+            self.compa_plasma_paxisZ,self.compa_plasma_paxisX_Bx, self.compa_plasma_extentXY_long, self.compa_plasma_extentYZ
+            gc.collect()           
         self.updateInfoLabel()
 
     def onRemoveTornado(self):
@@ -1879,7 +1898,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def onUpdateTabTrack(self, check_id):
 
         if self.INIT_tabFields == None or self.is_sim_loaded == False:
-            # self.showError("Simulation not loaded")
+            # Popup().showError("Simulation not loaded")
             return
         l0 = 2*pi
         if self.INIT_tabTrack or check_id==-1: #if change of name reinit
@@ -1891,7 +1910,7 @@ class MainWindow(QtWidgets.QMainWindow):
             try:
                 T0 = self.S.TrackParticles(track_name, axes=["x","y","z","py","pz","px"])
             except Exception:
-                self.showError("No TrackParticles diagnostic found")
+                Popup().showError("No TrackParticles diagnostic found")
                 return
 
             self.track_N_tot = T0.nParticles
@@ -2108,7 +2127,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
         if self.INIT_tabPlasma == None or self.is_sim_loaded == False:
-            # self.showError("Simulation not loaded")
+            # Popup().showError("Simulation not loaded")
             return
         if self.INIT_tabPlasma:
             l0 = 2*pi
@@ -2233,7 +2252,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def call_compa_ThreadGetPlasmaProbeData(self, check_id):
         if not self.is_sim_loaded:
-            # self.showError("Simulation not loaded")
+            # Popup().showError("Simulation not loaded")
             return
         boolList = [check.isChecked() for check in self.compa_plasma_check_list]
 
@@ -2306,9 +2325,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if "trans" in self.selected_plasma_name:
             extent = self.plasma_extentYZ
+            if is_compa: extent = self.compa_plasma_extentYZ
             data = self.compa_plasma_data[time_idx,x_idx,:,:]
         else:
             extent = self.plasma_extentXY_long
+            if is_compa: extent = self.compa_plasma_extentXY_long
             data = self.compa_plasma_data[time_idx].T
 
 
@@ -2333,7 +2354,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def onUpdateTabCompaPlasma(self, check_id):
         if self.INIT_tabPlasma == None or self.is_sim_loaded == False:
-            # self.showError("Simulation not loaded")
+            # Popup().showError("Simulation not loaded")
             return
         if check_id < 10:
             l0 = 2*pi
@@ -2351,7 +2372,30 @@ class MainWindow(QtWidgets.QMainWindow):
                                   self.plasma_paxisY_long[0]/l0-self.Ltrans/l0/2,self.plasma_paxisY_long[-1]/l0-self.Ltrans/l0/2]
             self.plasma_extentYZ = [self.plasma_paxisY[0]/l0-self.Ltrans/l0/2,self.plasma_paxisY[-1]/l0-self.Ltrans/l0/2,
                              self.plasma_paxisZ[0]/l0-self.Ltrans/l0/2,self.plasma_paxisZ[-1]/l0-self.Ltrans/l0/2]
-
+            
+            compa_Bx_long_diag = self.compa_S.Probe(2,"Bx")
+            self.compa_plasma_paxisX_long = compa_Bx_long_diag.getAxis("axis1")[:,0]
+            self.compa_plasma_paxisY_long = compa_Bx_long_diag.getAxis("axis2")[:,1]
+            self.compa_plasma_t_range = compa_Bx_long_diag.getTimes()
+            
+            compa_Bx_trans_diag = self.compa_S.Probe(1,"Bx")
+            self.compa_plasma_paxisY = compa_Bx_trans_diag.getAxis("axis2")[:,1]
+            self.compa_plasma_paxisZ = compa_Bx_trans_diag.getAxis("axis3")[:,2]
+            self.compa_plasma_paxisX_Bx = compa_Bx_trans_diag.getAxis("axis1")[:,0]
+            
+            compa_Ltrans = self.compa_S.namelist.Ltrans
+            
+            self.compa_plasma_extentXY_long = [self.compa_plasma_paxisX_long[0]/l0,self.compa_plasma_paxisX_long[-1]/l0,
+                                  self.compa_plasma_paxisY_long[0]/l0-compa_Ltrans/l0/2,self.compa_plasma_paxisY_long[-1]/l0-compa_Ltrans/l0/2]
+            self.compa_plasma_extentYZ = [self.compa_plasma_paxisY[0]/l0-compa_Ltrans/l0/2,self.compa_plasma_paxisY[-1]/l0-compa_Ltrans/l0/2,
+                             self.compa_plasma_paxisZ[0]/l0-compa_Ltrans/l0/2,self.compa_plasma_paxisZ[-1]/l0-compa_Ltrans/l0/2]
+            
+            
+            if self.compa_plasma_t_range[-1] < self.plasma_t_range[-1]:
+                t_range = self.compa_plasma_t_range
+            else:
+                t_range = self.plasma_t_range
+            
             self.plasma_time_SLIDER.setMaximum(len(self.plasma_t_range)-1)
             self.plasma_xcut_SLIDER.setMaximum(len(self.plasma_paxisX_Bx)-1)
             self.plasma_time_SLIDER.setValue(len(self.plasma_t_range)-1)
@@ -2359,12 +2403,11 @@ class MainWindow(QtWidgets.QMainWindow):
             self.plasma_time_EDIT.setText(str(round(self.plasma_t_range[-1]/l0,2)))
             self.plasma_xcut_EDIT.setText(str(round(self.plasma_paxisX_Bx[-3]/l0,2)))
 
-            print(len(self.plasma_t_range)-1)
-            self.compa_plasma_time_SLIDER.setMaximum(len(self.plasma_t_range)-1)
+            self.compa_plasma_time_SLIDER.setMaximum(len(t_range)-1)
             self.compa_plasma_xcut_SLIDER.setMaximum(len(self.plasma_paxisX_Bx)-1)
-            self.compa_plasma_time_SLIDER.setValue(len(self.plasma_t_range)-1)
+            self.compa_plasma_time_SLIDER.setValue(len(t_range)-1)
             self.compa_plasma_xcut_SLIDER.setValue(len(self.plasma_paxisX_Bx)-3)
-            self.compa_plasma_time_EDIT.setText(str(round(self.plasma_t_range[-1]/l0,2)))
+            self.compa_plasma_time_EDIT.setText(str(round(t_range[-1]/l0,2)))
             self.compa_plasma_xcut_EDIT.setText(str(round(self.plasma_paxisX_Bx[-3]/l0,2)))
 
             self.plasma_image_list = []
@@ -2474,10 +2517,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def onUpdateTabBinning(self, id, is_compa=False):
         if not self.is_sim_loaded:
-            # self.showError("Simulation not loaded")
+            # Popup().showError("Simulation not loaded")
             return
         if is_compa and not self.is_compa_sim_loaded:
-            self.showError("2nd simulation not loaded")
+            Popup().showError("2nd simulation not loaded")
             return
 
         if not is_compa:
@@ -2513,7 +2556,7 @@ class MainWindow(QtWidgets.QMainWindow):
                         diag2 = self.compa_S.ParticleBinning(diag_name)
                         binning_data2 = np.array(diag2.getData())
                 except IndexError:
-                    self.showError(f'No ParticleBinning diagnostic "{diag_name}" found')
+                    Popup().showError(f'No ParticleBinning diagnostic "{diag_name}" found')
                     return
 
                 t_range = diag.getTimes()
@@ -2739,7 +2782,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     finished_sim_path = self.previous_sim_dict[str(old_sim_id_int)]["job_full_path"]
                     finished_sim_name = self.previous_sim_dict[str(old_sim_id_int)]["job_full_name"]
                     print(finished_sim_path,"download is available ! \a") #\a
-                    self.showToast('Tornado download is available', finished_sim_name)
+                    Popup().showToast('Tornado download is available', finished_sim_name)
 
                     self.finished_sim_hist.append(old_sim_id_int)
                     self.running_sim_hist.remove(old_sim_id_int)
@@ -2892,7 +2935,7 @@ class MainWindow(QtWidgets.QMainWindow):
         progress_bar.setStyleSheet(self.qss_progressBar_DOWNLOADED)
 
         print(sim_id,"download is finished ! \a") #\a
-        self.showToast('Tornado download is finished', sim_id,ToastPreset.INFORMATION)
+        Popup().showToast('Tornado download is finished', sim_id,ToastPreset.INFORMATION)
 
         return
 
@@ -3021,21 +3064,21 @@ class MainWindow(QtWidgets.QMainWindow):
         self.loadthread.start()
         # self.downloadSimData(job_full_path) #"_NEW_PLASMA_/new_plasma_LG_optic_ne0.01_dx12/")
 
-    def showToast(self,msg1,msg2=None, preset=ToastPreset.SUCCESS):
-        toast = Toast(self)
-        toast.setDuration(10000)  # Hide after 10 seconds
-        toast.setTitle(msg1)
-        toast.setText(msg2)
-        toast.applyPreset(preset)  # Apply style preset
-        toast.setBorderRadius(2)  # Default: 0
+    # def showToast(self,msg1,msg2=None, preset=ToastPreset.SUCCESS):
+    #     toast = Toast(self)
+    #     toast.setDuration(10000)  # Hide after 10 seconds
+    #     toast.setTitle(msg1)
+    #     toast.setText(msg2)
+    #     toast.applyPreset(preset)  # Apply style preset
+    #     toast.setBorderRadius(2)  # Default: 0
 
-        toast.show()
-    def showError(self, message):
-        self.error_msg = QtWidgets.QMessageBox()
-        self.error_msg.setIcon(QtWidgets.QMessageBox.Critical)
-        self.error_msg.setWindowTitle("Error")
-        self.error_msg.setText(message)
-        self.error_msg.exec_()
+    #     toast.show()
+    # def showError(self, message):
+    #     self.error_msg = QtWidgets.QMessageBox()
+    #     self.error_msg.setIcon(QtWidgets.QMessageBox.Critical)
+    #     self.error_msg.setWindowTitle("Error")
+    #     self.error_msg.setText(message)
+    #     self.error_msg.exec_()
 
     def printSI(self,x,baseunit,ndeci=2):
         prefix="yzafpnµm kMGTPEZY"

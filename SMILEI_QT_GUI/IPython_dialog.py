@@ -8,6 +8,7 @@ from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtGui import QFont
 import sys
 import numpy as np
+from numpy import cos, sin, sqrt, exp, pi
 import time
 import io
 
@@ -105,7 +106,7 @@ class IPythonDialog(QtWidgets.QMainWindow):
         nb_built_in = len(re.findall(pattern_built_in, text))
         nb_str = len(re.findall(pattern_str, text))
         nb_numbers = len(re.findall(r'\d', text))
-        nb_self = text.count("self")
+        nb_self = text.count("main")
 
 
         old_cursor_pos = self.text_edit.textCursor().position()
@@ -114,10 +115,10 @@ class IPythonDialog(QtWidgets.QMainWindow):
         # print(old_cursor_pos, old_cursor_start,old_cursor_end)
         select_length = old_cursor_end-old_cursor_start
 
-        new_text = re.sub(pattern_built_in, r"<span style='color: #ae81ff'>\1</span>", text)
-        new_text = new_text.replace("self", "<span style='color: #f92672'>self</span>")
-        new_text = re.sub(r'(?<!#)\b\d+\b(?![a-fA-F0-9])', r"<span style='color: #a6e22e'>\g<0></span>", new_text)
-        new_text = re.sub(pattern_str, r'<span style="color: green">"\1"</span>', new_text)
+        new_text = re.sub(pattern_built_in, r"<span style='color: #ae81ff'>\1</span>", text) #built_in
+        new_text = new_text.replace("main", "<span style='color: #f92672'>main</span>") #SELF
+        new_text = re.sub(r'(?<!#)\b\d+\b(?![a-fA-F0-9])', r"<span style='color: #6ca103'>\g<0></span>", new_text) #NUMBERS
+        new_text = re.sub(pattern_str, r'<span style="color: green">"\1"</span>', new_text) #STR
 
         self.isBeingColored = True
         self.isBeingSelected = True
@@ -173,7 +174,7 @@ class IPythonDialog(QtWidgets.QMainWindow):
         nb_built_in = len(re.findall(pattern_built_in, text))
         nb_str = len(re.findall(pattern_str, text))
         nb_numbers = len(re.findall(r'\d', text))
-        nb_self = text.count("self")
+        nb_self = text.count("main")
 
         count_lower_cond = nb_built_in<self.count_built_in or nb_numbers < self.count_numbers or nb_self < self.count_self or nb_str < self.count_str
         count_diff_cond = nb_built_in!=self.count_built_in or nb_numbers != self.count_numbers or nb_self != self.count_self or nb_str != self.count_str
@@ -188,10 +189,10 @@ class IPythonDialog(QtWidgets.QMainWindow):
 
         # print(self.count_built_in,self.count_numbers)
         # print(text)
-        new_text = re.sub(pattern_built_in, r"<span style='color: #ae81ff'>\1</span>", text)
-        new_text = new_text.replace('self', "<span style='color: #f92672'>self</span>")
-        new_text = re.sub(r'(?<!#)\b\d+\b(?![a-fA-F0-9])', r"<span style='color: #a6e22e'>\g<0></span>", new_text)
-        new_text = re.sub(pattern_str, r'<span style="color: green">"\1"</span>', new_text)
+        new_text = re.sub(pattern_built_in, r"<span style='color: #ae81ff'>\1</span>", text) #built_in
+        new_text = new_text.replace("main", "<span style='color: #f92672'>main</span>") #SELF
+        new_text = re.sub(r'(?<!#)\b\d+\b(?![a-fA-F0-9])', r"<span style='color: #6ca103'>\g<0></span>", new_text) #NUMBERS
+        new_text = re.sub(pattern_str, r'<span style="color: green">"\1"</span>', new_text) #STR
 
         if new_text != text and  count_diff_cond and not self.isBeingColored:
             # print('EDITED HIGHLIGHT')
@@ -223,7 +224,48 @@ class IPythonDialog(QtWidgets.QMainWindow):
 
 
     def submitCode(self):
+        #======================
+        # SAVE USEFUL VARIABLES
+        #======================
+        main = self.main
+        S = main.S
+        
+        l0 = 2*pi
+        w0 = S.namelist.w0
+        a0 = S.namelist.a0
+        Tp = S.namelist.Tp
+        dx = S.namelist.dx
+        Ltrans = S.namelist.Ltrans
+        Llong = S.namelist.Llong
+        tsim = S.namelist.tsim
+        l1 = S.namelist.l1
+        eps = S.namelist.eps
+        ne = S.namelist.ne
+        
+        intensity_SI = (a0/0.85)**2 *10**18 #W/cm^2
 
+        power_SI = intensity_SI * pi*(w0/l0*10**-4)**2/2
+
+        me = 9.1093837*10**-31
+        e = 1.60217663*10**-19
+        c = 299792458
+        eps0 = 8.854*10**-12
+        toTesla = 10709
+        wr = 2*pi*c/1e-6
+        ne_SI = ne*eps0*me/e**2*wr**2
+        wp = np.sqrt(ne)*wr
+        wi = np.sqrt(ne_SI*e**2/(1836*me*eps0))
+        # self.lmbd_D = sqrt(eps0*kB*T)
+        nc = eps0*me/e**2*wr**2*(10**-6) #cm-3
+        K = me*c**2
+        N = eps0*me*wr**2/e**2
+        L = c/wr
+        KNL3 = K*N*L**3
+        energy_SI = np.max(S.Scalar("Utot").getData())*1000*KNL3
+        Tp_SI = Tp/wr*10**15
+        #======================
+        #======================
+        
         text = self.text_edit.toPlainText()
         text_list = text.split("\n")
         for expr in text_list:
